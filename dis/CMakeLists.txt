@@ -1,0 +1,9 @@
+#############################################################################
+#
+# Door86 Emulator
+#
+find_package(fmt CONFIG REQUIRED)
+
+add_executable(dis dis.cpp)
+target_link_libraries(dis PRIVATE fmt::fmt)
+

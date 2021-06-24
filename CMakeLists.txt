@@ -1,3 +1,9 @@
+#############################################################################
+#
+# Door86 Emulator
+#
+set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake)
+
 project(door86)
 cmake_minimum_required(VERSION 3.13)
 
@@ -7,4 +13,4 @@ if(MSVC)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 endif()
 
-add_executable(dis dis/dis.cpp)
+add_subdirectory(dis)
