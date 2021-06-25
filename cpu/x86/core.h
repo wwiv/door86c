@@ -71,7 +71,7 @@ struct reg_mod_rm {
   uint8_t mod;
   // 00XXX000
   uint8_t reg;
-  // 000000XX
+  // 00000XXX
   uint8_t rm;
 };
 
