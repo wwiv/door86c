@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <sstream>
 #include <vector>
+#include "fmt/format.h"
 
 struct exe_header_t {
   uint16_t signature; /* == 0x5a4D */
@@ -28,9 +29,15 @@ struct exe_reloc_table_entry_t {
 };
 
 static std::string to_seg_off(uint16_t seg, uint16_t off) {
-  std::ostringstream ss;
-  ss << std::hex << std::setw(4) << seg << ":" << off << " (" << std::dec << (seg * 16) + off << ")";
-  return ss.str();
+  return fmt::format("{:04x}:{:04x}", seg, off);
+}
+
+static std::string exe_signature(uint16_t sig) {
+  char s[3];
+  s[0] = sig & 0xff;
+  s[1] = (sig >> 8) & 0xff;
+  s[2] = 0;
+  return s;
 }
 
 int main(int argc, char** argv) {
@@ -56,7 +63,7 @@ int main(int argc, char** argv) {
   }
   std::cout << "binary size:               " << binary_size << std::endl;
   std::cout << "num_relocs:                " << hdr.num_relocs << std::endl;
-  std::cout << "Magic number :             " << hdr.signature << std::endl;
+  fmt::print("EXE Header:                {}\r\n", exe_signature(hdr.signature));
   std::cout << "Bytes on last page :       " << hdr.bytes_in_last_block << std::endl;
   std::cout << "Pages in file :            " << hdr.blocks_in_file << std::endl;
   std::cout << "Relocations :              " << hdr.num_relocs << std::endl;

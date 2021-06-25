@@ -2,6 +2,7 @@
   "name": "door86",
   "version-string": "0.0.1",
   "dependencies": [
-    "fmt"
+    "fmt",
+    "gtest"
   ]
 }
