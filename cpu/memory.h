@@ -13,6 +13,9 @@ public:
   const uint8_t& operator[](int loc) const { return mem_[loc]; }
   uint8_t& operator[](int loc) { return mem_[loc]; }
 
+  uint16_t* word(int loc);
+  uint16_t& wordref(int loc);
+
   bool load_image(int start, int size, uint8_t* image);
 
 private:

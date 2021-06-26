@@ -7,6 +7,11 @@
 
 namespace door86::cpu::x86 {
 
+struct seg_and_off_t {
+  uint16_t seg;
+  uint16_t off;
+};
+
 struct regs16 {
   uint16_t ax;
   uint16_t cx;
@@ -57,10 +62,12 @@ union regs_t {
 };
 
 struct sregs_t {
-  uint16_t es;
   uint16_t cs;
-  uint16_t ss;
+  uint16_t es;
   uint16_t ds;
+  uint16_t fs;
+  uint16_t gs;
+  uint16_t ss;
 };
 
 constexpr int16_t CF = 0x0001;
@@ -95,6 +102,7 @@ public:
   CPU();
 
   bool execute(uint16_t cs, uint16_t ip);
+  void execute_0x0(const instruction_t& inst);
 
   cpu_core core;
   Decoder decoder;

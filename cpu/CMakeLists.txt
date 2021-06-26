@@ -25,3 +25,9 @@ add_executable(decoder_tests
 )
 target_link_libraries(decoder_tests cpu GTest::gtest_main)
 GTEST_DISCOVER_TESTS(decoder_tests)
+
+add_executable(memory_tests 
+ "memory_test.cpp"
+)
+target_link_libraries(memory_tests cpu GTest::gtest_main)
+GTEST_DISCOVER_TESTS(memory_tests)
