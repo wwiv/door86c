@@ -3,10 +3,12 @@
 #include "fmt/format.h"
 #include <string>
 #include <sstream>
+#include <vector>
 
-namespace door86::cpu::x86{
+namespace door86::cpu::x86 {
 
-op_code_data_t op_code_data[] = {
+std::vector<op_code_data_t> create_opcode_metadata() {
+  return {
     // ADD
     {0x00, op_mask_modrm8, "ADD"},
     {0x01, op_mask_modrm16, "ADD"},
@@ -110,48 +112,48 @@ op_code_data_t op_code_data[] = {
     {0x5e, op_mask_notimpl, ""},
     {0x5f, op_mask_notimpl, ""},
 
-    { 0x60, op_mask_notimpl, "" },
-    { 0x61, op_mask_notimpl, "" },
-    { 0x62, op_mask_notimpl, "" },
-    { 0x63, op_mask_notimpl, "" },
-    { 0x64, op_mask_notimpl, "" },
-    { 0x65, op_mask_notimpl, "" },
-    { 0x66, op_mask_notimpl, "" },
-    { 0x67, op_mask_notimpl, "" },
-    { 0x68, op_mask_notimpl, "" },
-    { 0x69, op_mask_notimpl, "" },
-    { 0x6a, op_mask_notimpl, "" },
-    { 0x6b, op_mask_notimpl, "" },
-    { 0x6c, op_mask_notimpl, "" },
-    { 0x6d, op_mask_notimpl, "" },
-    { 0x6e, op_mask_notimpl, "" },
-    { 0x6f, op_mask_notimpl, "" },
+    {0x60, op_mask_notimpl, ""},
+    {0x61, op_mask_notimpl, ""},
+    {0x62, op_mask_notimpl, ""},
+    {0x63, op_mask_notimpl, ""},
+    {0x64, op_mask_notimpl, ""},
+    {0x65, op_mask_notimpl, ""},
+    {0x66, op_mask_notimpl, ""},
+    {0x67, op_mask_notimpl, ""},
+    {0x68, op_mask_notimpl, ""},
+    {0x69, op_mask_notimpl, ""},
+    {0x6a, op_mask_notimpl, ""},
+    {0x6b, op_mask_notimpl, ""},
+    {0x6c, op_mask_notimpl, ""},
+    {0x6d, op_mask_notimpl, ""},
+    {0x6e, op_mask_notimpl, ""},
+    {0x6f, op_mask_notimpl, ""},
 
-    { 0x70, op_mask_notimpl, "" },
-    { 0x71, op_mask_notimpl, "" },
-    { 0x72, op_mask_notimpl, "" },
-    { 0x73, op_mask_notimpl, "" },
-    { 0x74, op_mask_notimpl, "" },
-    { 0x75, op_mask_notimpl, "" },
-    { 0x76, op_mask_notimpl, "" },
-    { 0x77, op_mask_notimpl, "" },
-    { 0x78, op_mask_notimpl, "" },
-    { 0x79, op_mask_notimpl, "" },
-    { 0x7a, op_mask_notimpl, "" },
-    { 0x7b, op_mask_notimpl, "" },
-    { 0x7c, op_mask_notimpl, "" },
-    { 0x7d, op_mask_notimpl, "" },
-    { 0x7e, op_mask_notimpl, "" },
-    { 0x7f, op_mask_notimpl, "" },
+    {0x70, op_mask_notimpl, ""},
+    {0x71, op_mask_notimpl, ""},
+    {0x72, op_mask_notimpl, ""},
+    {0x73, op_mask_notimpl, ""},
+    {0x74, op_mask_notimpl, ""},
+    {0x75, op_mask_notimpl, ""},
+    {0x76, op_mask_notimpl, ""},
+    {0x77, op_mask_notimpl, ""},
+    {0x78, op_mask_notimpl, ""},
+    {0x79, op_mask_notimpl, ""},
+    {0x7a, op_mask_notimpl, ""},
+    {0x7b, op_mask_notimpl, ""},
+    {0x7c, op_mask_notimpl, ""},
+    {0x7d, op_mask_notimpl, ""},
+    {0x7e, op_mask_notimpl, ""},
+    {0x7f, op_mask_notimpl, ""},
 
-    { 0x80, op_mask_notimpl, "" },
-    { 0x81, op_mask_notimpl, "" },
-    { 0x82, op_mask_notimpl, "" },
-    { 0x83, op_mask_notimpl, "" },
-    { 0x84, op_mask_notimpl, "" },
-    { 0x85, op_mask_notimpl, "" },
-    { 0x86, op_mask_notimpl, "" },
-    { 0x87, op_mask_notimpl, "" },
+    {0x80, op_mask_notimpl, ""},
+    {0x81, op_mask_notimpl, ""},
+    {0x82, op_mask_notimpl, ""},
+    {0x83, op_mask_notimpl, ""},
+    {0x84, op_mask_notimpl, ""},
+    {0x85, op_mask_notimpl, ""},
+    {0x86, op_mask_notimpl, ""},
+    {0x87, op_mask_notimpl, ""},
 
     // TODO: add the 80s for ADD
     {0x88, op_mask_modrm8, "MOV"},
@@ -159,133 +161,132 @@ op_code_data_t op_code_data[] = {
     {0x8A, op_mask_modrm8, "MOV"},
     {0x8B, op_mask_modrm16, "MOV"},
     {0x8C, op_mask_modrm16, "MOV"},
-    { 0x8D, op_mask_modrm16, "LEA", 16, op_enc_t::r_rm },
-    { 0x8E, op_mask_modrm16 | op_mask_reg_is_sreg, "MOV", 16, op_enc_t::r_rm },
-    { 0x8F, op_mask_notimpl, "" },
+    {0x8D, op_mask_modrm16, "LEA", 16, op_enc_t::r_rm},
+    {0x8E, op_mask_modrm16 | op_mask_reg_is_sreg, "MOV", 16, op_enc_t::r_rm},
+    {0x8F, op_mask_notimpl, ""},
 
-    { 0x90, op_mask_notimpl, "" },
-    { 0x91, op_mask_notimpl, "" },
-    { 0x92, op_mask_notimpl, "" },
-    { 0x93, op_mask_notimpl, "" },
-    { 0x94, op_mask_notimpl, "" },
-    { 0x95, op_mask_notimpl, "" },
-    { 0x96, op_mask_notimpl, "" },
-    { 0x97, op_mask_notimpl, "" },
-    { 0x98, op_mask_notimpl, "" },
-    { 0x99, op_mask_notimpl, "" },
-    { 0x9a, op_mask_notimpl, "" },
-    { 0x9b, op_mask_notimpl, "" },
-    { 0x9c, op_mask_notimpl, "" },
-    { 0x9d, op_mask_notimpl, "" },
-    { 0x9e, op_mask_notimpl, "" },
-    { 0x9f, op_mask_notimpl, "" },
+    {0x90, op_mask_notimpl, ""},
+    {0x91, op_mask_notimpl, ""},
+    {0x92, op_mask_notimpl, ""},
+    {0x93, op_mask_notimpl, ""},
+    {0x94, op_mask_notimpl, ""},
+    {0x95, op_mask_notimpl, ""},
+    {0x96, op_mask_notimpl, ""},
+    {0x97, op_mask_notimpl, ""},
+    {0x98, op_mask_notimpl, ""},
+    {0x99, op_mask_notimpl, ""},
+    {0x9a, op_mask_notimpl, ""},
+    {0x9b, op_mask_notimpl, ""},
+    {0x9c, op_mask_notimpl, ""},
+    {0x9d, op_mask_notimpl, ""},
+    {0x9e, op_mask_notimpl, ""},
+    {0x9f, op_mask_notimpl, ""},
 
-    { 0xA0, op_mask_notimpl, "" },
-    { 0xA1, op_mask_notimpl, "" },
-    { 0xA2, op_mask_notimpl, "" },
-    { 0xA3, op_mask_notimpl, "" },
-    { 0xA4, op_mask_notimpl, "" },
-    { 0xA5, op_mask_notimpl, "" },
-    { 0xA6, op_mask_notimpl, "" },
-    { 0xA7, op_mask_notimpl, "" },
-    { 0xA8, op_mask_notimpl, "" },
-    { 0xA9, op_mask_notimpl, "" },
-    { 0xAa, op_mask_notimpl, "" },
-    { 0xAb, op_mask_notimpl, "" },
-    { 0xAc, op_mask_notimpl, "" },
-    { 0xAd, op_mask_notimpl, "" },
-    { 0xAe, op_mask_notimpl, "" },
-    { 0xAf, op_mask_notimpl, "" },
+    {0xA0, op_mask_notimpl, ""},
+    {0xA1, op_mask_notimpl, ""},
+    {0xA2, op_mask_notimpl, ""},
+    {0xA3, op_mask_notimpl, ""},
+    {0xA4, op_mask_notimpl, ""},
+    {0xA5, op_mask_notimpl, ""},
+    {0xA6, op_mask_notimpl, ""},
+    {0xA7, op_mask_notimpl, ""},
+    {0xA8, op_mask_notimpl, ""},
+    {0xA9, op_mask_notimpl, ""},
+    {0xAa, op_mask_notimpl, ""},
+    {0xAb, op_mask_notimpl, ""},
+    {0xAc, op_mask_notimpl, ""},
+    {0xAd, op_mask_notimpl, ""},
+    {0xAe, op_mask_notimpl, ""},
+    {0xAf, op_mask_notimpl, ""},
 
     // MOV with operand encoded in instruction
-  {0xB0, op_mask_imm8, "MOV"},
-  {0xB1, op_mask_imm8, "MOV"},
-  {0xB2, op_mask_imm8, "MOV"},
-  {0xB3, op_mask_imm8, "MOV"},
-  {0xB4, op_mask_imm8, "MOV"},
-  {0xB5, op_mask_imm8, "MOV"},
-  {0xB6, op_mask_imm8, "MOV"},
-  {0xB7, op_mask_imm8, "MOV"},
-  {0xB8, op_mask_imm16, "MOV"},
-  {0xB9, op_mask_imm16, "MOV"},
-  {0xBA, op_mask_imm16, "MOV"},
-  {0xBB, op_mask_imm16, "MOV"},
-  {0xBC, op_mask_imm16, "MOV"},
-  {0xBD, op_mask_imm16, "MOV"},
-  {0xBE, op_mask_imm16, "MOV"},
-  {0xBF, op_mask_imm16, "MOV"},
+    {0xB0, op_mask_imm8, "MOV"},
+    {0xB1, op_mask_imm8, "MOV"},
+    {0xB2, op_mask_imm8, "MOV"},
+    {0xB3, op_mask_imm8, "MOV"},
+    {0xB4, op_mask_imm8, "MOV"},
+    {0xB5, op_mask_imm8, "MOV"},
+    {0xB6, op_mask_imm8, "MOV"},
+    {0xB7, op_mask_imm8, "MOV"},
+    {0xB8, op_mask_imm16, "MOV"},
+    {0xB9, op_mask_imm16, "MOV"},
+    {0xBA, op_mask_imm16, "MOV"},
+    {0xBB, op_mask_imm16, "MOV"},
+    {0xBC, op_mask_imm16, "MOV"},
+    {0xBD, op_mask_imm16, "MOV"},
+    {0xBE, op_mask_imm16, "MOV"},
+    {0xBF, op_mask_imm16, "MOV"},
 
-  { 0xC0, op_mask_notimpl, "" },
-  { 0xC1, op_mask_notimpl, "" },
-  { 0xC2, op_mask_notimpl, "" },
-  { 0xC3, op_mask_notimpl, "" },
-  { 0xC4, op_mask_notimpl, "" },
-  { 0xC5, op_mask_notimpl, "" },
-  { 0xC6, op_mask_notimpl, "" },
-  { 0xC7, op_mask_notimpl, "" },
-  { 0xC8, op_mask_notimpl, "" },
-  { 0xC9, op_mask_notimpl, "" },
-  { 0xCa, op_mask_notimpl, "" },
-  { 0xCb, op_mask_notimpl, "" },
-  // INT3, ib, 4
-  { 0xCc, op_mask_none, "INT" },
-  { 0xCD, op_mask_imm8, "INT" },
-  { 0xCe, op_mask_none, "INT" },
-  { 0xCf, op_mask_notimpl, "" },
+    {0xC0, op_mask_notimpl, ""},
+    {0xC1, op_mask_notimpl, ""},
+    {0xC2, op_mask_notimpl, ""},
+    {0xC3, op_mask_notimpl, ""},
+    {0xC4, op_mask_notimpl, ""},
+    {0xC5, op_mask_notimpl, ""},
+    {0xC6, op_mask_notimpl, ""},
+    {0xC7, op_mask_notimpl, ""},
+    {0xC8, op_mask_notimpl, ""},
+    {0xC9, op_mask_notimpl, ""},
+    {0xCa, op_mask_notimpl, ""},
+    {0xCb, op_mask_notimpl, ""},
+    // INT3, ib, 4
+    {0xCc, op_mask_none, "INT"},
+    {0xCD, op_mask_imm8, "INT"},
+    {0xCe, op_mask_none, "INT"},
+    {0xCf, op_mask_notimpl, ""},
 
+    {0xD0, op_mask_notimpl, ""},
+    {0xD1, op_mask_notimpl, ""},
+    {0xD2, op_mask_notimpl, ""},
+    {0xD3, op_mask_notimpl, ""},
+    {0xD4, op_mask_notimpl, ""},
+    {0xD5, op_mask_notimpl, ""},
+    {0xD6, op_mask_notimpl, ""},
+    {0xD7, op_mask_notimpl, ""},
+    {0xD8, op_mask_notimpl, ""},
+    {0xD9, op_mask_notimpl, ""},
+    {0xDa, op_mask_notimpl, ""},
+    {0xDb, op_mask_notimpl, ""},
+    {0xDc, op_mask_notimpl, ""},
+    {0xDd, op_mask_notimpl, ""},
+    {0xDe, op_mask_notimpl, ""},
+    {0xDf, op_mask_notimpl, ""},
 
-  { 0xD0, op_mask_notimpl, "" },
-  { 0xD1, op_mask_notimpl, "" },
-  { 0xD2, op_mask_notimpl, "" },
-  { 0xD3, op_mask_notimpl, "" },
-  { 0xD4, op_mask_notimpl, "" },
-  { 0xD5, op_mask_notimpl, "" },
-  { 0xD6, op_mask_notimpl, "" },
-  { 0xD7, op_mask_notimpl, "" },
-  { 0xD8, op_mask_notimpl, "" },
-  { 0xD9, op_mask_notimpl, "" },
-  { 0xDa, op_mask_notimpl, "" },
-  { 0xDb, op_mask_notimpl, "" },
-  { 0xDc, op_mask_notimpl, "" },
-  { 0xDd, op_mask_notimpl, "" },
-  { 0xDe, op_mask_notimpl, "" },
-  { 0xDf, op_mask_notimpl, "" },
+    {0xE0, op_mask_notimpl, ""},
+    {0xE1, op_mask_notimpl, ""},
+    {0xE2, op_mask_notimpl, ""},
+    {0xE3, op_mask_notimpl, ""},
+    {0xE4, op_mask_notimpl, ""},
+    {0xE5, op_mask_notimpl, ""},
+    {0xE6, op_mask_notimpl, ""},
+    {0xE7, op_mask_notimpl, ""},
+    {0xE8, op_mask_notimpl, ""},
+    {0xE9, op_mask_notimpl, ""},
+    {0xEa, op_mask_notimpl, ""},
+    {0xEb, op_mask_notimpl, ""},
+    {0xEc, op_mask_notimpl, ""},
+    {0xEd, op_mask_notimpl, ""},
+    {0xEe, op_mask_notimpl, ""},
+    {0xEf, op_mask_notimpl, ""},
 
+    {0xF0, op_mask_notimpl, ""},
+    {0xF1, op_mask_notimpl, ""},
+    {0xF2, op_mask_notimpl, ""},
+    {0xF3, op_mask_notimpl, ""},
+    {0xF4, op_mask_notimpl, ""},
+    {0xF5, op_mask_notimpl, ""},
+    {0xF6, op_mask_notimpl, ""},
+    {0xF7, op_mask_notimpl, ""},
+    {0xF8, op_mask_notimpl, ""},
+    {0xF9, op_mask_notimpl, ""},
+    {0xFa, op_mask_notimpl, ""},
+    {0xFb, op_mask_notimpl, ""},
+    {0xFc, op_mask_notimpl, ""},
+    {0xFd, op_mask_notimpl, ""},
+    {0xFe, op_mask_notimpl, ""},
+    {0xFf, op_mask_notimpl, ""}};
+}
 
-  { 0xE0, op_mask_notimpl, "" },
-  { 0xE1, op_mask_notimpl, "" },
-  { 0xE2, op_mask_notimpl, "" },
-  { 0xE3, op_mask_notimpl, "" },
-  { 0xE4, op_mask_notimpl, "" },
-  { 0xE5, op_mask_notimpl, "" },
-  { 0xE6, op_mask_notimpl, "" },
-  { 0xE7, op_mask_notimpl, "" },
-  { 0xE8, op_mask_notimpl, "" },
-  { 0xE9, op_mask_notimpl, "" },
-  { 0xEa, op_mask_notimpl, "" },
-  { 0xEb, op_mask_notimpl, "" },
-  { 0xEc, op_mask_notimpl, "" },
-  { 0xEd, op_mask_notimpl, "" },
-  { 0xEe, op_mask_notimpl, "" },
-  { 0xEf, op_mask_notimpl, "" },
-
-  { 0xF0, op_mask_notimpl, "" },
-  { 0xF1, op_mask_notimpl, "" },
-  { 0xF2, op_mask_notimpl, "" },
-  { 0xF3, op_mask_notimpl, "" },
-  { 0xF4, op_mask_notimpl, "" },
-  { 0xF5, op_mask_notimpl, "" },
-  { 0xF6, op_mask_notimpl, "" },
-  { 0xF7, op_mask_notimpl, "" },
-  { 0xF8, op_mask_notimpl, "" },
-  { 0xF9, op_mask_notimpl, "" },
-  { 0xFa, op_mask_notimpl, "" },
-  { 0xFb, op_mask_notimpl, "" },
-  { 0xFc, op_mask_notimpl, "" },
-  { 0xFd, op_mask_notimpl, "" },
-  { 0xFe, op_mask_notimpl, "" },
-  { 0xFf, op_mask_notimpl, "" },
-};
 /*
 struct reg_mod_rm {
   // XX000000
@@ -326,13 +327,18 @@ inline static bool has_modrm_operand8(const reg_mod_rm& r) {
   return r.rm == 0x01;
 }
 
-instruction_t next_instruction(uint8_t* o) {
+bool instruction_t::has_modrm() { 
+  return door86::cpu::x86::has_modrm(metadata.mask);
+}
+
+
+instruction_t Decoder::next_instruction(uint8_t* o) {
   instruction_t i;
   i.op = *o++;
   ++i.len;
 
-  const auto& data = op_code_data[i.op];
-  if (has_modrm(data.mask)) {
+  i.metadata = op_data_[i.op];
+  if (has_modrm(i.metadata.mask)) {
     ++i.len;
     i.mdrm = parse_modrm(*o++);
     if (i.mdrm.rm == 0x06 || i.mdrm.mod == 0x02) {
@@ -346,12 +352,10 @@ instruction_t next_instruction(uint8_t* o) {
       i.len++;
       i.operand8 = *o++;
     }
-  }
-  else  if (data.mask & op_mask_imm8) {
+  } else if (i.metadata.mask & op_mask_imm8) {
     i.len++;
     i.operand8 = *o++;
-  }
-  else if (data.mask & op_mask_imm16) {
+  } else if (i.metadata.mask & op_mask_imm16) {
     i.len += 2;
     auto lsb = *o++;
     auto msb = *o++;
@@ -441,8 +445,8 @@ std::string rm_to_string(const reg_mod_rm& rm, int bits, uint8_t operand8, uint1
   return {};
 }
 
-std::string to_string(const instruction_t& i) {
-  const auto& op = op_code_data[i.op];
+std::string Decoder::to_string(const instruction_t& i) {
+  const auto& op = op_data_[i.op];
   std::ostringstream ss;
   ss << (op.name.empty() ? "???" : op.name) << " ";
   if (has_modrm(op.mask)) {
@@ -483,4 +487,8 @@ std::string to_string(const instruction_t& i) {
   return ss.str();
 }
 
+
+Decoder::Decoder() : op_data_(create_opcode_metadata()) {
+
+}
 }

@@ -1,6 +1,8 @@
 #ifndef INCLUDED_CPU_X86_CORE_H
 #define INCLUDED_CPU_X86_CORE_H
 
+#include "cpu/memory.h"
+#include "cpu/x86/decoder.h"
 #include <cstdint>
 
 namespace door86::cpu::x86 {
@@ -61,32 +63,45 @@ struct sregs_t {
   uint16_t ds;
 };
 
-struct flags_t {
-  bool carry{ false };
+constexpr int16_t CF = 0x0001;
+constexpr int16_t PF = 0x0004;
+constexpr int16_t AF = 0x0010;
+constexpr int16_t ZF = 0x0040;
+constexpr int16_t SF = 0x0080;
+constexpr int16_t TF = 0x0100;
+constexpr int16_t IF = 0x0200;
+constexpr int16_t DF = 0x0400;
+constexpr int16_t OF = 0x0800;
 
+class flags_t {
+public:
+  bool cf() { return flag & CF; }
+  // bit 1 and 12-15 are always on
+  void reset() { flag = 0xf002;  } 
+
+  uint16_t flag;
 };
 
-struct reg_mod_rm {
-  // XX000000
-  uint8_t mod;
-  // 00XXX000
-  uint8_t reg;
-  // 00000XXX
-  uint8_t rm;
-};
-
-struct cpu_core {
+class cpu_core {
+public:
   regs_t  regs;
   sregs_t sregs;
   flags_t flags;
+  uint16_t ip;
 };
 
 class CPU {
 public:
   CPU();
 
+  bool execute(uint16_t cs, uint16_t ip);
+
+  cpu_core core;
+  Decoder decoder;
+  Memory memory;
+
 private:
-  cpu_core core_;
+  bool running_{true};
 };
 
 }

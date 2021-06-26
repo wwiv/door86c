@@ -1,11 +1,19 @@
 #ifndef INCLUDED_CPU_X86_DECODER_H
 #define INCLUDED_CPU_X86_DECODER_H
 
-#include "cpu/x86/core.h"
-
 #include <string>
+#include <vector>
 
 namespace door86::cpu::x86 {
+
+struct reg_mod_rm {
+  // XX000000
+  uint8_t mod;
+  // 00XXX000
+  uint8_t reg;
+  // 00000XXX
+  uint8_t rm;
+};
 
 constexpr uint32_t op_mask_none = 0x00;
 constexpr uint32_t op_mask_imm8 = 0x01;
@@ -30,21 +38,20 @@ struct op_code_data_t {
   op_enc_t op_enc{op_enc_t::rm_r};
 };
 
-struct instruction_t {
+class instruction_t {
+public:
   uint8_t op;
   reg_mod_rm mdrm;
   uint8_t operand8;
   uint16_t operand16;
   int len{0};
+  op_code_data_t metadata;
+
+  // methods.
+  bool has_modrm();
 };
 
 reg_mod_rm parse_modrm(uint8_t b);
-
-/** Fetches the next instruction from the bytestream at o */
-instruction_t next_instruction(uint8_t* o);
-
-// Op list. Visible for testing.
-extern op_code_data_t op_code_data[];
 
 std::string rmreg8_to_string(uint8_t);
 std::string rmreg16_to_string(uint8_t);
@@ -55,6 +62,22 @@ std::string rmreg16_to_string(uint8_t);
 
 std::string rmreg_sreg_to_string(uint8_t);
 std::string to_string(const instruction_t&);
+
+class Decoder {
+public:
+  Decoder();
+  ~Decoder() = default;
+
+  /** Fetches the next instruction from the bytestream at o */
+  instruction_t next_instruction(uint8_t* o);
+
+  std::string to_string(const instruction_t& i);
+  const op_code_data_t& op_data(uint8_t opcode) const { return op_data_.at(opcode); }
+
+private:
+  // Op list. Visible for testing.
+  std::vector<op_code_data_t> op_data_;
+};
 
 } // namespace door86::cpu::x86
 
