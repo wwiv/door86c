@@ -7,11 +7,6 @@
 
 namespace door86::cpu::x86 {
 
-struct seg_and_off_t {
-  uint16_t seg;
-  uint16_t off;
-};
-
 struct regs16 {
   uint16_t ax;
   uint16_t cx;
@@ -23,7 +18,7 @@ struct regs16 {
   uint16_t di;
   uint16_t cflag;
 
-  uint16_t& by_reg(int n) {
+  uint16_t& regref(int n) {
     switch (n) {
     case 0: return ax;
     case 1: return cx;
@@ -34,6 +29,8 @@ struct regs16 {
     case 6: return si;
     case 7: return di;
     }
+    // TODO(rushfan): GPF? Crash? What?
+    return ax;
   }
 };
 
@@ -42,7 +39,7 @@ struct regs8 {
   uint8_t cl, ch;
   uint8_t dl, dh;
   uint8_t bl, bh;
-  uint8_t& by_reg(int n) {
+  uint8_t& regref(int n) {
     switch (n) {
     case 0: return al;
     case 1: return cl;
@@ -53,6 +50,8 @@ struct regs8 {
     case 6: return dh;
     case 7: return bh;
     }
+    // TODO(rushfan): GPF? Crash? What?
+    return al;
   }
 };
 
@@ -68,6 +67,19 @@ struct sregs_t {
   uint16_t fs;
   uint16_t gs;
   uint16_t ss;
+  // ES = 0, CS = 1, SS = 2, DS = 3, FS = 4, and GS = 5.
+  uint16_t& regref(int n) {
+    switch (n) {
+    case 0: return es;
+    case 1: return cs;
+    case 2: return ss;
+    case 3: return ds;
+    case 4: return fs;
+    case 5: return gs;
+    }
+    // TODO(rushfan): GPF? Crash? What?
+    return es;
+  }
 };
 
 constexpr int16_t CF = 0x0001;

@@ -334,6 +334,7 @@ bool instruction_t::has_modrm() {
 
 instruction_t Decoder::next_instruction(uint8_t* o) {
   instruction_t i;
+  // TODO(rushfan): add in prefix bytes here.
   i.op = *o++;
   ++i.len;
 

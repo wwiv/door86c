@@ -9,3 +9,7 @@ DerivePointerAlignment: false
 PointerAlignment: Left
 ColumnLimit: 100
 
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortEnumsOnASingleLine: true
+
+

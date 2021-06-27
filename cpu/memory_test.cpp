@@ -30,14 +30,14 @@ TEST(MemoryTest, Word) {
 
   ASSERT_TRUE(m.load_image(0, 6, img));
 
-  uint16_t* w = m.word(0);
+  uint16_t* w = m.word(0, 0);
   EXPECT_EQ(*w, 0xdead);
-   w = m.word(2);
+   w = m.word(0, 2);
   EXPECT_EQ(*w, 0xbeef);
 
-  uint16_t& r = m.wordref(0);
+  uint16_t& r = m.wordref(0, 0);
   EXPECT_EQ(r, 0xdead);
-  r = m.wordref(2);
+  r = m.wordref(0, 2);
   EXPECT_EQ(r, 0xbeef);
 }
 
@@ -59,7 +59,7 @@ TEST(MemoryTest, MutateWord) {
 
   ASSERT_TRUE(m.load_image(0, 6, img));
 
-  uint16_t& r = m.wordref(0);
+  uint16_t& r = m.wordref(0, 0);
   ASSERT_EQ(r, 0xdead);
 
   r = 0xabcd;
