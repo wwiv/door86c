@@ -1,3 +1,6 @@
 [submodule "vcpkg"]
 	path = vcpkg
 	url = https://github.com/microsoft/vcpkg
+[submodule "deps\\wwiv"]
+	path = deps\\wwiv
+	url = https://github.com/wwiv/wwiv.git

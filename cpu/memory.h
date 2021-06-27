@@ -5,6 +5,9 @@
 
 namespace door86::cpu {
 
+/** Enum representing the segments */
+enum class segment_t : int8_t { ES = 0, CS, SS, DS, FS, GS };
+
 /** Structure representing a segmentted memory address */
 struct seg_address_t {
   uint16_t seg;

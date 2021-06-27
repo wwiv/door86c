@@ -4,7 +4,13 @@
 #include <iomanip>
 #include <sstream>
 #include <vector>
+#include "core/log.h"
+#include "core/command_line.h"
+#include "core/scope_exit.h"
+#include "core/version.h"
 #include "fmt/format.h"
+
+using namespace wwiv::core;
 
 struct exe_header_t {
   uint16_t signature; /* == 0x5a4D */
@@ -41,19 +47,41 @@ static std::string exe_signature(uint16_t sig) {
 }
 
 int main(int argc, char** argv) {
+  LoggerConfig config;
+  Logger::Init(argc, argv, config);
+
+  ScopeExit at_exit(Logger::ExitLogger);
+  CommandLine cmdline(argc, argv, "");
+  cmdline.add_argument(BooleanCommandLineArgument{"version", 'V', "Display version.", false});
+  cmdline.set_no_args_allowed(true);
+
+  if (!cmdline.Parse()) {
+    std::cout << cmdline.GetHelp() << std::endl;
+    return EXIT_FAILURE;
+  }
+  if (cmdline.help_requested()) {
+    std::cout << cmdline.GetHelp() << std::endl;
+    return EXIT_SUCCESS;
+  }
+  if (cmdline.barg("version")) {
+    std::cout << full_version() << std::endl;
+    return 0;
+  }
+
   FILE* fp = nullptr;
-  if (argc < 2) {
+  if (cmdline.remaining().empty()) {
     fprintf(stderr, "Usage: dis <exename>\r\n");
     return 1;
   }
-  if (fp = fopen(argv[1], "rb"); !fp) {
-    fprintf(stderr, "Unable to open file: [%s]\r\n", argv[1]);
+  const auto& filename = cmdline.remaining().front();
+  if (fp = fopen(filename.c_str(), "rb"); !fp) {
+    fmt::print("Unable to open file: [%s]\r\n", filename);
     return 1;
   }
 
   exe_header_t hdr{};
   if (const auto num_read = fread(&hdr, sizeof(exe_header_t), 1, fp); num_read != 1) {
-    fprintf(stderr, "Unable to read header from: [%s]\r\n", argv[1]);
+    fmt::print("Unable to read header from: [%s]\r\n", filename);
     return 1;
   }
   std::cout << "sizeof(exe_header_t)       " << sizeof(exe_header_t) << std::endl;
@@ -83,14 +111,14 @@ int main(int argc, char** argv) {
   
   
   if (fseek(fp, hdr.reloc_table_offset, SEEK_SET) != 0) {
-    fprintf(stderr, "Unable to seek to relo offsets from: [%s]\r\n", argv[1]);
+    fmt::print("Unable to seek to relo offsets from: [%s]\r\n", filename);
     return 1;
   }
 
   std::vector<exe_reloc_table_entry_t> relos;
   relos.resize(hdr.num_relocs);
   if (fread(&relos[0], sizeof(exe_reloc_table_entry_t), hdr.num_relocs, fp) != hdr.num_relocs) {
-    fprintf(stderr, "Unable to read relo offsets from: [%s]\r\n", argv[1]);
+    fmt::print("Unable to read relo offsets from: [%s]\r\n", filename);
     return 1;
   }
 

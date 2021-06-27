@@ -158,7 +158,7 @@ std::vector<op_code_data_t> create_opcode_metadata() {
     // TODO: add the 80s for ADD
     {0x88, op_mask_modrm8, "MOV"},
     {0x89, op_mask_modrm16, "MOV"},
-    {0x8A, op_mask_modrm8, "MOV"},
+    {0x8A, op_mask_modrm8, "MOV", 8},
     {0x8B, op_mask_modrm16, "MOV"},
     {0x8C, op_mask_modrm16, "MOV"},
     {0x8D, op_mask_modrm16, "LEA", 16, op_enc_t::r_rm},
@@ -335,8 +335,40 @@ bool instruction_t::has_modrm() {
 instruction_t Decoder::next_instruction(uint8_t* o) {
   instruction_t i;
   // TODO(rushfan): add in prefix bytes here.
-  i.op = *o++;
+  const auto first_byte = *o++;
   ++i.len;
+
+  if (first_byte == 0x2e) {
+    i.seg_override = segment_t::CS;
+    i.op = *o++;
+    ++i.len;
+  } else if (first_byte == 0x36) {
+    i.seg_override = segment_t::SS;
+    i.op = *o++;
+    ++i.len;
+  } else if (first_byte == 0x3E) {
+    i.seg_override = segment_t::DS;
+    ++i.len;
+    i.op = *o++;
+  } else if (first_byte == 0x26) {
+    i.seg_override = segment_t::ES;
+    i.op = *o++;
+    ++i.len;
+  } else if (first_byte == 0xf0) {
+    i.lock = true;
+    i.op = *o++;
+    ++i.len;
+  } else if (first_byte == 0xf2) {
+    i.repne = true;
+    i.op = *o++;
+    ++i.len;
+  } else if (first_byte == 0xf3) {
+    i.rep = true;
+    i.op = *o++;
+    ++i.len;
+  } else {
+    i.op = first_byte;
+  }
 
   i.metadata = op_data_[i.op];
   if (has_modrm(i.metadata.mask)) {
@@ -489,7 +521,6 @@ std::string Decoder::to_string(const instruction_t& i) {
 }
 
 
-Decoder::Decoder() : op_data_(create_opcode_metadata()) {
+Decoder::Decoder() : op_data_(create_opcode_metadata()) {}
 
-}
 }

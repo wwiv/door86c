@@ -1,6 +1,8 @@
 #ifndef INCLUDED_CPU_X86_DECODER_H
 #define INCLUDED_CPU_X86_DECODER_H
 
+#include "cpu/memory.h"
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -49,6 +51,12 @@ public:
 
   // methods.
   bool has_modrm();
+
+  // prefix instructions
+  std::optional<segment_t> seg_override;
+  bool lock{false};
+  bool rep{false};
+  bool repne{false};
 };
 
 reg_mod_rm parse_modrm(uint8_t b);

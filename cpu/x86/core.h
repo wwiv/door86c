@@ -5,6 +5,10 @@
 #include "cpu/x86/decoder.h"
 #include <cstdint>
 
+// Start with instructons needed for hello world in asm, then expand
+// to these, then on to others as needed.
+// https://github.com/xem/minix86/blob/gh-pages/src/instructions.js
+
 namespace door86::cpu::x86 {
 
 struct regs16 {
@@ -80,6 +84,8 @@ struct sregs_t {
     // TODO(rushfan): GPF? Crash? What?
     return es;
   }
+  uint16_t regref(segment_t n) { return regref(static_cast<int>(n));
+  }
 };
 
 constexpr int16_t CF = 0x0001;
@@ -113,8 +119,22 @@ class CPU {
 public:
   CPU();
 
+  // opcode executing
+
   bool execute(uint16_t cs, uint16_t ip);
   void execute_0x0(const instruction_t& inst);
+  void execute_0x8(const instruction_t& inst);
+  void execute_0xB(const instruction_t& inst);
+  void execute_0xC(const instruction_t& inst);
+
+  // stack handling
+
+  void push(uint16_t val);
+  uint16_t pop();
+
+  // interrupt handling
+
+  void call_interrupt(int num);
 
   cpu_core core;
   Decoder decoder;

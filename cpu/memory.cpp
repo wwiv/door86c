@@ -6,9 +6,13 @@ namespace door86::cpu {
 
 namespace {
 // returns the absolute memory location for a segmented address
-static inline uint32_t abs_memory(const seg_address_t& loc) { return (loc.seg * 0x10) + loc.off; }
+static inline uint32_t abs_memory(const seg_address_t& loc) { 
+  return (loc.seg * 0x10) + loc.off; 
+}
 // returns the absolute memory location for a segmented address
-static inline uint32_t abs_memory(uint16_t seg, uint16_t off) { return (seg * 0x10) + off; }
+static inline uint32_t abs_memory(uint16_t seg, uint16_t off) {
+  return (seg * 0x10) + off; 
+}
 }
 
 Memory::Memory(int size) : size_(size) { mem_ = new uint8_t[size]; }
@@ -31,8 +35,14 @@ bool Memory::load_image(const seg_address_t& start, uint32_t size, uint8_t* imag
   return load_image(abs_memory(start), size, image);
 }
 
-uint8_t* Memory::absbyte(uint32_t loc) { return mem_ + loc; }
-uint8_t& Memory::absbyteref(uint32_t loc) { return mem_[loc]; }
+uint8_t* Memory::absbyte(uint32_t loc) {
+  return mem_ + loc;
+
+}
+uint8_t& Memory::absbyteref(uint32_t loc) { 
+  return mem_[loc]; 
+}
+
 uint16_t* Memory::absword(uint32_t loc) { return reinterpret_cast<uint16_t*>(mem_ + loc); }
 uint16_t& Memory::abswordref(uint32_t loc) { return reinterpret_cast<uint16_t&>(mem_[loc]); }
 

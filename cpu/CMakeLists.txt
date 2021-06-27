@@ -12,7 +12,7 @@ add_library(cpu
   "x86/decoder.cpp"
   "x86/core.cpp"
   )
-target_link_libraries(cpu PRIVATE fmt::fmt)
+target_link_libraries(cpu PRIVATE fmt::fmt-header-only)
 
 add_executable(core_tests 
  "x86/core_test.cpp"
