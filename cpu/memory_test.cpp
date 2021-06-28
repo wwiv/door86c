@@ -6,6 +6,8 @@
 
 using namespace door86::cpu;
 
+TEST(MemoryTest, SegAddressSize) { ASSERT_EQ(sizeof(seg_address_t), sizeof(uint32_t)); }
+
 TEST(MemoryTest, Smoke) {
   Memory m(100);
   uint8_t img[] = {0xad, 0xde, 0xef, 0xbe, 0x00, 0x00};

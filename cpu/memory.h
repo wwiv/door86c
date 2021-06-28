@@ -13,8 +13,9 @@ struct seg_address_t {
   uint16_t seg;
   uint16_t off;
 };
+static_assert(sizeof(seg_address_t) == sizeof(uint32_t), "seg_address_t must be 4 bytes");
 
-class Memory {
+class Memory final {
 public:
   Memory(int size);
   ~Memory();
