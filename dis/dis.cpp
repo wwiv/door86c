@@ -111,8 +111,8 @@ void dump_exe_info(const exe_info_t& info) {
 
 void disasm(FILE* fp, int code_offset, const std::string& format) { 
   bool done{false};
-  auto row = code_offset;
-  while (!done) {
+  fseek(fp, code_offset, SEEK_SET);
+  for (auto row = code_offset; !done; ) {
     char buf[1024];
     memset(buf, 0, sizeof(buf));
     const auto num_read = fread(buf, 1, 1024, fp);
@@ -120,18 +120,21 @@ void disasm(FILE* fp, int code_offset, const std::string& format) {
     line1.reserve(100);
     std::string line2;
     line2.reserve(100);
+    int curline = 0;
     for (auto i = 0; i < num_read; i++) {
       const uint8_t ch = static_cast<uint8_t>(buf[i]);
-      line1.append(fmt::format("{:02x} ", ch));
+      line1.append(fmt::format("{:02X} ", ch));
       line2.push_back((ch >= 32 && ch <= 127) ? static_cast<char>(ch) : '.');
-      if ((i % 16) == 0) {
-        fmt::print("{:04d} {:32.32} {}\r\n", row, line1, line2);
+      if (++curline == 16) {
+        fmt::print("{:08x}  {:48.48}  {}\r\n", row, line1, line2);
+        row += 16;
+        curline = 0;
         line1.clear();
         line2.clear();
       }
     }
     if (!line1.empty()) {
-      fmt::print("{:04d} {:32.32} {}\r\n", row, line1, line2);
+      fmt::print("{:08x}  {:48.48}  {}\r\n", row, line1, line2);
     }
     if (num_read < 1024) {
       done = true;
@@ -149,8 +152,6 @@ int main(int argc, char** argv) {
   cmdline.add_argument(BooleanCommandLineArgument{"header", 'H', "Display EXE Header information.", true});
   cmdline.add_argument(BooleanCommandLineArgument{"disasm", 'D', "Display Byte information.", false});
   cmdline.add_argument({"format", 'F', "Format for byte information. (code | hex)", "hex"});
-  // cmdline.add_argument({"process_instance", "Also process pending files for BBS instance #",
-  // "0"});
   cmdline.set_no_args_allowed(true);
 
   if (!cmdline.Parse()) {
@@ -194,6 +195,9 @@ int main(int argc, char** argv) {
   }
 
   if (cmdline.barg("disasm")) {
+    if (cmdline.barg("header")) {
+      fmt::print("\r\nOpcodes: \r\n");
+    }
     disasm(fp, code_offset, cmdline.sarg("format"));
   }
 
