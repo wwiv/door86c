@@ -9,31 +9,12 @@
 #include "core/command_line.h"
 #include "core/scope_exit.h"
 #include "core/version.h"
+#include "dos/exe.h"
 #include "fmt/format.h"
 
 using namespace wwiv::core;
+using namespace door86::dos;
 
-struct exe_header_t {
-  uint16_t signature; /* == 0x5a4D */
-  uint16_t bytes_in_last_block;
-  uint16_t blocks_in_file;
-  uint16_t num_relocs;
-  uint16_t header_paragraphs;
-  uint16_t min_extra_paragraphs;
-  uint16_t max_extra_paragraphs;
-  uint16_t ss;
-  uint16_t sp;
-  uint16_t checksum;
-  uint16_t ip;
-  uint16_t cs;
-  uint16_t reloc_table_offset;
-  uint16_t overlay_number;
-};
-
-struct exe_reloc_table_entry_t {
-  uint16_t offset;
-  uint16_t segment;
-};
 
 static std::string to_seg_off(uint16_t seg, uint16_t off) {
   return fmt::format("{:04x}:{:04x}", seg, off);
@@ -47,41 +28,6 @@ static std::string exe_signature(uint16_t sig) {
   return s;
 }
 
-struct exe_info_t {
-  exe_header_t hdr;
-  std::vector<exe_reloc_table_entry_t> relos;
-  int binary_size;
-};
-
-std::optional<exe_info_t> read_exe_header(FILE* fp, const std::string& filename) {
-  exe_info_t info;
-
-  if (fseek(fp, 0, SEEK_SET) != 0) {
-    fmt::print("Unable to seek to relo offsets from: [%s]\r\n", filename);
-    return std::nullopt;
-  }
-  if (const auto num_read = fread(&info.hdr, sizeof(exe_header_t), 1, fp); num_read != 1) {
-    fmt::print("Unable to read header from: [%s]\r\n", filename);
-    return std::nullopt;
-  }
-  info.binary_size = ((info.hdr.blocks_in_file * 512) + info.hdr.bytes_in_last_block);
-  if (info.hdr.bytes_in_last_block) {
-    info.binary_size -= 512;
-  }
-  if (fseek(fp, info.hdr.reloc_table_offset, SEEK_SET) != 0) {
-    fmt::print("Unable to seek to relo offsets from: [%s]\r\n", filename);
-    return std::nullopt;
-  }
-
-  info.relos.resize(info.hdr.num_relocs);
-  if (fread(&info.relos[0], sizeof(exe_reloc_table_entry_t), info.hdr.num_relocs, fp) !=
-      info.hdr.num_relocs) {
-    fmt::print("Unable to read relo offsets from: [%s]\r\n", filename);
-    return std::nullopt;
-  }
-
-  return info;
-}
 
 void dump_exe_info(const exe_info_t& info) {
   std::cout << "binary size:               " << info.binary_size << std::endl;

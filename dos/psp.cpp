@@ -13,6 +13,17 @@ bool PSP::initialize() {
   return false;
 };
 
+void PSP::set_commandline(std::string args) {
+  if (args.empty() || args.back() != 0x0d) {
+    args.push_back(0x0d);
+  }
+  if (args.size() > 126) {
+    args = args.substr(args.size() - 126);
+  }
+  psp->cmdlen_length = static_cast<uint8_t>(args.size() & 0xff);
+  strcpy(psp->cmdline, args.c_str());
+}
+
 }
 
 

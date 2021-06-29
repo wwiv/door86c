@@ -22,7 +22,7 @@ struct regs16 {
   uint16_t di;
   uint16_t cflag;
 
-  uint16_t& regref(int n) {
+  uint16_t get(int n) {
     switch (n) {
     case 0: return ax;
     case 1: return cx;
@@ -72,7 +72,7 @@ struct regs8 {
   uint8_t dl, dh;
   uint8_t bl, bh;
 
-  uint8_t& regref(int n) {
+  uint8_t get(int n) {
     switch (n) {
     case 0: return al;
     case 1: return cl;
@@ -129,7 +129,7 @@ struct sregs_t {
   uint16_t gs;
   uint16_t ss;
   // ES = 0, CS = 1, SS = 2, DS = 3, FS = 4, and GS = 5.
-  uint16_t& regref(int n) {
+  uint16_t get(int n) {
     switch (n) {
     case 0: return es;
     case 1: return cs;
@@ -141,7 +141,20 @@ struct sregs_t {
     // TODO(rushfan): GPF? Crash? What?
     return es;
   }
-  uint16_t regref(segment_t n) { return regref(static_cast<int>(n));
+
+  void set(int n, uint16_t value) {
+    switch (n) {
+    case 0: es = value;
+    case 1: cs = value;
+    case 2: ss = value;
+    case 3: ds = value;
+    case 4: fs = value;
+    case 5: gs = value;
+    }
+    // TODO(rushfan): GPF? Crash? What?
+  }
+
+  uint16_t get(segment_t n) { return get(static_cast<int>(n));
   }
 };
 

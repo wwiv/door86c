@@ -2,6 +2,7 @@
 #define INCLUDED_DOS_PSP_H
 
 #include <cstdint>
+#include <string>
 
 namespace door86::dos {
 
@@ -18,11 +19,11 @@ struct psp_t {
   uint32_t addr_break_handler;
   uint32_t addr_crit_error_handler;
   uint16_t parent_psp_segment;
-  uint8_t job_file_table[22];
+  uint8_t job_file_table[20];
   uint16_t environ_seg;
   uint32_t last_int21_sssp;
   uint16_t jft_size;
-  uint16_t jft_pointer;
+  uint32_t jft_pointer;
   uint32_t previous_psp_ptr;
   uint32_t reserved2;
   uint16_t dos_version_to_return;
@@ -43,6 +44,8 @@ public:
 
   /** Initializes a default PSP for a new process on top of an existing memory area */
   bool initialize();
+  /** Sets the args of the commandline */
+  void set_commandline(std::string args);
 
   psp_t* psp;
 };

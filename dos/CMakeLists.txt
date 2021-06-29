@@ -4,6 +4,7 @@ find_package(GTest CONFIG REQUIRED)
 include(GoogleTest)
 
 add_library(dos 
+  "exe.cpp"
   "psp.cpp"
   )
 target_link_libraries(dos PRIVATE fmt::fmt-header-only)

@@ -149,7 +149,7 @@ std::vector<op_code_data_t> create_opcode_metadata() {
     {0x80, op_mask_notimpl, ""},
     {0x81, op_mask_notimpl, ""},
     {0x82, op_mask_notimpl, ""},
-    {0x83, op_mask_notimpl, ""},
+    {0x83, op_mask_modrm16 | op_mask_imm8, "ADD"},
     {0x84, op_mask_notimpl, ""},
     {0x85, op_mask_notimpl, ""},
     {0x86, op_mask_notimpl, ""},
@@ -385,7 +385,10 @@ instruction_t Decoder::next_instruction(uint8_t* o) {
       i.len++;
       i.operand8 = *o++;
     }
-  } else if (i.metadata.mask & op_mask_imm8) {
+  }
+  // Let the metadata immediate bytes replace any that came from
+  // modrm bytes
+  if (i.metadata.mask & op_mask_imm8) {
     i.len++;
     i.operand8 = *o++;
   } else if (i.metadata.mask & op_mask_imm16) {

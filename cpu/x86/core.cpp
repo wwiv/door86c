@@ -9,15 +9,20 @@ namespace door86::cpu::x86 {
 CPU::CPU() : core(), decoder(), memory(1 << 20) {}
 
 // returns the register for an r16
-uint16_t& r16(const instruction_t& inst, cpu_core& core) { 
+static uint16_t r16(const instruction_t& inst, cpu_core& core) { 
   if (inst.metadata.mask & op_mask_reg_is_sreg) {
-    return core.sregs.regref(inst.mdrm.reg);
+    return core.sregs.get(inst.mdrm.reg);
   }
-  return core.regs.x.regref(inst.mdrm.reg);
+  return core.regs.x.get(inst.mdrm.reg);
 }
 
-// "[BX + SI]", "[BX + DI]", "[BP + SI]", "[BP + DI]",
-// "[SI]",      "[DI]",      "[BP]",      "[BX]"
+// sets an r16 value (either reg or sreg depending on the instruction)
+static void r16(const instruction_t& inst, cpu_core& core, uint16_t value) { 
+  if (inst.metadata.mask & op_mask_reg_is_sreg) {
+    core.sregs.set(inst.mdrm.reg, value);
+  }
+  core.regs.x.set(inst.mdrm.reg, value);
+}
 
 // Returns the default segment to use for an rm value of 0-7
 // per the Intel docs: The default segment register is SS for the effective addresses 
@@ -72,7 +77,7 @@ Rmm<uint8_t> rmm8(const instruction_t& inst, cpu_core& core, Memory& mem) {
   // Pick the overridden segment, or just the default one for the instruction.
   const auto seg_index =
       inst.seg_override.value_or(default_segment_for_index(inst.mdrm.mod, inst.mdrm.rm));
-  const uint16_t seg = core.sregs.regref(seg_index);
+  const uint16_t seg = core.sregs.get(seg_index);
   if (inst.mdrm.mod == 0x03) {
     // mod 3 returns a reference to a CPU register
     return Rmm<uint8_t>(core.regs.h.regptr(inst.mdrm.rm));
@@ -88,7 +93,7 @@ Rmm<uint8_t> rmm8(const instruction_t& inst, cpu_core& core, Memory& mem) {
 Rmm<uint16_t> rmm16(const instruction_t& inst, cpu_core& core, Memory& mem) {
   const segment_t senum =
       inst.seg_override.value_or(default_segment_for_index(inst.mdrm.mod, inst.mdrm.rm));
-  uint16_t seg = core.sregs.regref(senum);
+  uint16_t seg = core.sregs.get(senum);
   if (inst.mdrm.mod == 0x03) {
     // mod 3 returns a reference to a CPU register.
     // don't ue r16 since that applies segment override, and ModR/M bytes
@@ -106,24 +111,26 @@ Rmm<uint16_t> rmm16(const instruction_t& inst, cpu_core& core, Memory& mem) {
 // TODO(rushfan): Make generic way to set flags after operastions
 // mostly add
 void CPU::execute_0x0(const instruction_t& inst) {
-  auto& reg16 = r16(inst, core);
   auto regmem16 = rmm16(inst, core, memory);
   switch (inst.op & 0x0f) {
   // "00":"add r/m8, r8",
   case 0x0: {
-    auto& reg8 = core.regs.h.regref(inst.mdrm.reg);
+    const auto reg8 = core.regs.h.get(inst.mdrm.reg);
     regmem16 += reg8;
   } break;
   // "01" : "add r/m16/32, r16/32",
-  case 0x1: regmem16 += reg16; break;
+  case 0x1: regmem16 += r16(inst, core); break;
   // 02/r":"add r8, r/m8
   case 0x2: {
-    auto& reg8 = core.regs.h.regref(inst.mdrm.reg);
+    const auto reg8 = core.regs.h.get(inst.mdrm.reg);
     const auto regmem8 = rmm8(inst, core, memory);
-    reg8 += regmem8.get();
+    core.regs.h.set(inst.mdrm.reg, regmem8.get() + reg8);
   } break;
   // 03":"add r16/32, r/m16/32
-  case 0x3: reg16 += regmem16.get(); break;
+  case 0x3: {
+    const auto reg16 = r16(inst, core);
+    r16(inst, core, reg16 + regmem16.get());
+  } break;
   // 04":"add al, imm8
   case 0x4: core.regs.h.al += inst.operand8; break;
   // 05":"add ax, imm16/32
@@ -137,23 +144,25 @@ void CPU::execute_0x0(const instruction_t& inst) {
 
 void CPU::execute_0x8(const instruction_t& inst) {
   switch (inst.op & 0x0f) {
+  // 83/0":"add r/m16/32, imm8
+  case 0x3: {
+    auto regmem16 = rmm16(inst, core, memory);
+    regmem16 += inst.operand8;
+  } break;
   // "8A/r":"mov r8, r/m8",
   case 0xA: {
-    auto& reg8 = core.regs.h.regref(inst.mdrm.reg);
     auto regmem8 = rmm8(inst, core, memory);
-    reg8 = regmem8.get();
+    core.regs.h.set(inst.mdrm.reg, regmem8.get());
   } break;
   // "8D":"lea r16/32, m",
   case 0xD: {
-    auto& reg16 = r16(inst, core);
-    reg16 = effective_address(inst, core);
+    r16(inst, core, effective_address(inst, core));
   } break;
   // "8E/r":"mov Sreg, r/m16",
   case 0xE: {
     auto regmem16 = rmm16(inst, core, memory);
     // actually segment per metadata
-    auto& reg16 = r16(inst, core);
-    reg16 = regmem16.get();
+    r16(inst, core, regmem16.get());
   } break;
   }
 }
@@ -227,7 +236,8 @@ bool CPU::execute(uint16_t start_cs, uint16_t start_ip) {
       execute_0xC(inst);
     } break;
     }
-    std::cout << "Instruction: " << inst.metadata.name << std::endl;
+    const auto dispname = (inst.metadata.name.empty() ? fmt::format("[{:2X}]", inst.op) : inst.metadata.name );
+    std::cout << "Instruction: " << dispname << std::endl;
     // hack
     if (inst.op == 0xcd) {
       // stop on interrupt
