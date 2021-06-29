@@ -7,9 +7,10 @@ namespace door86::dos {
 
 #pragma pack(push, 1)
 // https://en.wikipedia.org/wiki/Program_Segment_Prefix
+// Also http://www.delorie.com/djgpp/doc/rbinter/it/78/13.html
 
 struct psp_t {
-  uint16_t int20_instruction;
+  uint8_t int20_instruction[2];
   uint16_t ending_address;
   uint8_t reserved1;
   uint8_t call_to_dos_fn_dispatcher[5];
@@ -39,6 +40,9 @@ class PSP final {
 public:
   PSP(void* memory) { psp = reinterpret_cast<psp_t*>(memory); }
   ~PSP() = default;
+
+  /** Initializes a default PSP for a new process on top of an existing memory area */
+  bool initialize();
 
   psp_t* psp;
 };

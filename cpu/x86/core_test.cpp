@@ -69,3 +69,11 @@ TEST(CpuFixtureTest, Dump) {
                        0x74, 0x68, 0x65, 0x72, 0x65, 0x2E, 0x0D, 0x0A, 0x24));
 }
 
+TEST(CPUTest, Mov) {
+  //B8FECA
+  auto ops = parse_opcodes_from_line("B8FECA");
+  CPU c;
+  ASSERT_TRUE(c.memory.load_image(0x0, ops.size(), ops.data()));
+  EXPECT_TRUE(c.execute(0, 0x0));
+  EXPECT_EQ(0xCAFE, c.core.regs.x.ax);
+}

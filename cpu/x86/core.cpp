@@ -64,30 +64,28 @@ uint16_t effective_address(const instruction_t& inst, const cpu_core& core) {
   }
 }
 
-// **** NOTE: Keep rm8 and rm16 in sync
+// **** NOTE: Keep rmm8 and rmm16 in sync
 
 // returns the offset for the effective address described by a modrm byte
 // returns the rm portion for the modrm
-uint8_t& rm8(const instruction_t& inst, cpu_core& core, Memory& mem) {
+Rmm<uint8_t> rmm8(const instruction_t& inst, cpu_core& core, Memory& mem) {
   // Pick the overridden segment, or just the default one for the instruction.
-  const segment_t senum =
+  const auto seg_index =
       inst.seg_override.value_or(default_segment_for_index(inst.mdrm.mod, inst.mdrm.rm));
-  uint16_t seg = core.sregs.regref(senum);
+  const uint16_t seg = core.sregs.regref(seg_index);
   if (inst.mdrm.mod == 0x03) {
     // mod 3 returns a reference to a CPU register
-    return core.regs.h.regref(inst.mdrm.rm);
+    return Rmm<uint8_t>(core.regs.h.regptr(inst.mdrm.rm));
   }
   if (inst.mdrm.mod == 0 && inst.mdrm.rm == 0x06) {
-    const auto disp = inst.metadata.bits == 8 ? inst.operand8 : inst.operand16;
-    return mem.byteref(seg, disp);
+    const auto offset = inst.metadata.bits == 8 ? inst.operand8 : static_cast<uint8_t>(inst.operand16 & 0xff);
+    return Rmm<uint8_t>(&mem, seg, offset);
   }
   const auto offset = effective_address(inst, core);
-  return mem.byteref(seg, offset);
+  return Rmm<uint8_t>(&mem, seg, offset);
 }
 
-// returns the offset for the effective address described by a modrm byte
-// returns the rm portion for the modrm
-uint16_t& rm16(const instruction_t& inst, cpu_core& core, Memory& mem) {
+Rmm<uint16_t> rmm16(const instruction_t& inst, cpu_core& core, Memory& mem) {
   const segment_t senum =
       inst.seg_override.value_or(default_segment_for_index(inst.mdrm.mod, inst.mdrm.rm));
   uint16_t seg = core.sregs.regref(senum);
@@ -95,21 +93,21 @@ uint16_t& rm16(const instruction_t& inst, cpu_core& core, Memory& mem) {
     // mod 3 returns a reference to a CPU register.
     // don't ue r16 since that applies segment override, and ModR/M bytes
     // in mod 3 don't ever use segment registers.
-    return core.regs.x.regref(inst.mdrm.rm);
+    return Rmm<uint16_t>(core.regs.x.regptr(inst.mdrm.rm));
   }
   if (inst.mdrm.mod == 0 && inst.mdrm.rm == 0x06) {
-    const auto disp = inst.metadata.bits == 8 ? inst.operand8 : inst.operand16;
-    return mem.wordref(seg, disp);
+    const auto offset = inst.metadata.bits == 8 ? inst.operand8 : inst.operand16;
+    return Rmm<uint16_t>(&mem, seg, offset);
   }
   const auto offset = effective_address(inst, core);
-  return mem.wordref(seg, offset);
+  return Rmm<uint16_t>(&mem, seg, offset);
 }
 
 // TODO(rushfan): Make generic way to set flags after operastions
 // mostly add
 void CPU::execute_0x0(const instruction_t& inst) {
   auto& reg16 = r16(inst, core);
-  auto& regmem16 = rm16(inst, core, memory);
+  auto regmem16 = rmm16(inst, core, memory);
   switch (inst.op & 0x0f) {
   // "00":"add r/m8, r8",
   case 0x0: {
@@ -121,11 +119,11 @@ void CPU::execute_0x0(const instruction_t& inst) {
   // 02/r":"add r8, r/m8
   case 0x2: {
     auto& reg8 = core.regs.h.regref(inst.mdrm.reg);
-    const auto& regmem8 = rm8(inst, core, memory);
-    reg8 += regmem8;
+    const auto regmem8 = rmm8(inst, core, memory);
+    reg8 += regmem8.get();
   } break;
   // 03":"add r16/32, r/m16/32
-  case 0x3: reg16 += regmem16; break;
+  case 0x3: reg16 += regmem16.get(); break;
   // 04":"add al, imm8
   case 0x4: core.regs.h.al += inst.operand8; break;
   // 05":"add ax, imm16/32
@@ -142,8 +140,8 @@ void CPU::execute_0x8(const instruction_t& inst) {
   // "8A/r":"mov r8, r/m8",
   case 0xA: {
     auto& reg8 = core.regs.h.regref(inst.mdrm.reg);
-    auto& regmem8 = rm8(inst, core, memory);
-    reg8 = regmem8;
+    auto regmem8 = rmm8(inst, core, memory);
+    reg8 = regmem8.get();
   } break;
   // "8D":"lea r16/32, m",
   case 0xD: {
@@ -152,10 +150,10 @@ void CPU::execute_0x8(const instruction_t& inst) {
   } break;
   // "8E/r":"mov Sreg, r/m16",
   case 0xE: {
-    auto& regmem16 = rm16(inst, core, memory);
+    auto regmem16 = rmm16(inst, core, memory);
     // actually segment per metadata
     auto& reg16 = r16(inst, core);
-    reg16 = regmem16;
+    reg16 = regmem16.get();
   } break;
   }
 }
@@ -164,11 +162,9 @@ void CPU::execute_0xB(const instruction_t& inst) {
   const auto wide = inst.op & 0x08;
   const auto regnum = inst.op & 0x07;
   if (wide) {
-    auto& reg = core.regs.x.regref(regnum);
-    reg = inst.operand16;
+    core.regs.x.set(regnum, inst.operand16);
   } else {
-    auto& reg = core.regs.h.regref(regnum);
-    reg = inst.operand8;
+    core.regs.h.set(regnum, inst.operand8);
   }
 }
 
@@ -187,8 +183,7 @@ void CPU::call_interrupt(int num) {
     // display string
     case 0x09: {
       for (auto offset = core.regs.x.dx;; ++offset) {
-        seg_address_t addr{core.sregs.ds, offset};
-        const auto& m = memory.byteref(addr);
+        const auto m = memory.get<uint8_t>(core.sregs.ds, offset);
         if (m == '$') {
           break;
         }
@@ -247,12 +242,11 @@ void CPU::push(uint16_t val) {
   // To push we decrement the stack pointer and then add it.
   core.regs.x.sp -= 2;
   // TODO(rushfan): assert if sp <= 0x0000
-  auto& m = memory.wordref(core.sregs.ss, core.regs.x.sp);
-  m = val;
+  memory.set<uint16_t>(core.sregs.ss, core.regs.x.sp, val);
 }
 
 uint16_t CPU::pop() {
-  const auto m = memory.wordref(core.sregs.ss, core.regs.x.sp);
+  const auto m = memory.get<uint16_t>(core.sregs.ss, core.regs.x.sp);
   core.regs.x.sp += 2; 
   // TODO(rushfan): assert if sp >= 0xffff
   return m;

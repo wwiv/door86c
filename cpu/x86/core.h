@@ -36,6 +36,34 @@ struct regs16 {
     // TODO(rushfan): GPF? Crash? What?
     return ax;
   }
+
+  uint16_t* regptr(int n) {
+    switch (n) {
+    case 0: return &ax;
+    case 1: return &cx;
+    case 2: return &dx;
+    case 3: return &bx;
+    case 4: return &sp;
+    case 5: return &bp;
+    case 6: return &si;
+    case 7: return &di;
+    }
+    // TODO(rushfan): GPF? Crash? What?
+    return nullptr;
+  }
+
+  void set(int n, uint16_t val) {
+    switch (n) {
+    case 0: ax = val;
+    case 1: cx = val;
+    case 2: dx = val;
+    case 3: bx = val;
+    case 4: sp = val;
+    case 5: bp = val;
+    case 6: si = val;
+    case 7: di = val;
+    }
+  }
 };
 
 struct regs8 {
@@ -43,6 +71,7 @@ struct regs8 {
   uint8_t cl, ch;
   uint8_t dl, dh;
   uint8_t bl, bh;
+
   uint8_t& regref(int n) {
     switch (n) {
     case 0: return al;
@@ -56,6 +85,34 @@ struct regs8 {
     }
     // TODO(rushfan): GPF? Crash? What?
     return al;
+  }
+
+  void set(int n, uint8_t val) {
+    switch (n) {
+    case 0: al = val;
+    case 1: cl = val;
+    case 2: dl = val;
+    case 3: bl = val;
+    case 4: ah = val;
+    case 5: ch = val;
+    case 6: dh = val;
+    case 7: bh = val;
+    }
+  }
+
+  uint8_t* regptr(int n) {
+    switch (n) {
+    case 0: return &al;
+    case 1: return &cl;
+    case 2: return &dl;
+    case 3: return &bl;
+    case 4: return &ah;
+    case 5: return &ch;
+    case 6: return &dh;
+    case 7: return &bh;
+    }
+    // TODO(rushfan): GPF? Crash? What?
+    return &al;
   }
 };
 
@@ -142,6 +199,40 @@ public:
 
 private:
   bool running_{true};
+};
+
+template<typename T> class Rmm {
+public:
+  Rmm(T* reg) : mem_(nullptr), reg_(reg), seg_(0), off_(0) {}
+  Rmm(Memory* mem, uint16_t seg, uint16_t off) : mem_(mem), reg_(nullptr), seg_(seg), off_(off) {}
+
+  T get() const {
+    if (mem_) {
+      return mem_->get<T>(seg_, off_);
+    } 
+    return *reg_;
+  }
+
+  void set(T v) {
+    if (mem_) {
+      mem_->set<T>(seg_, off_, v);
+    } else {
+      *reg_ = v;
+    }
+  }
+
+  Rmm& operator+=(const T& other) { 
+    T cur = get();
+    cur += other;
+    set(cur);
+    return *this;
+  }
+
+private:
+  Memory* mem_;
+  T* reg_;
+  uint16_t seg_;
+  uint16_t off_;
 };
 
 }
