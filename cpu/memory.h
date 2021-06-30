@@ -1,23 +1,12 @@
 #ifndef INCLUDED_CPU_MEMORY_H
 #define INCLUDED_CPU_MEMORY_H
 
+#include "cpu/memory_bits.h"
 #include <cstdint>
+
 
 namespace door86::cpu {
 
-// TODO(rushfan): Move these to a place for x86 specific memory, or make Memory Templatized
-// for the endianness
-
-/** Enum representing the segments */
-enum class segment_t : int8_t { ES = 0, CS, SS, DS, FS, GS };
-
-/** Structure representing a segmentted memory address */
-struct seg_address_t {
-  uint16_t seg;
-  uint16_t off;
-};
-
-static_assert(sizeof(seg_address_t) == sizeof(uint32_t), "seg_address_t must be 4 bytes");
 
 class Memory final {
 private:

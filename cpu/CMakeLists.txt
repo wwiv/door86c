@@ -19,11 +19,11 @@ add_library(cpu_fixtures
   )
 target_link_libraries(cpu_fixtures PRIVATE core fmt::fmt-header-only)
 
-add_executable(core_tests 
+add_executable(cpu_tests 
  "x86/core_test.cpp"
 )
-target_link_libraries(core_tests cpu cpu_fixtures GTest::gtest_main)
-GTEST_DISCOVER_TESTS(core_tests)
+target_link_libraries(cpu_tests cpu cpu_fixtures GTest::gtest_main)
+GTEST_DISCOVER_TESTS(cpu_tests)
 
 add_executable(decoder_tests 
  "x86/decoder_test.cpp"

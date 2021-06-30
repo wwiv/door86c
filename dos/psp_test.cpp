@@ -23,12 +23,7 @@ TEST(PspTest, StructSize) {
   EXPECT_EQ(0x40, offsetof(psp_t, dos_version_to_return));
   EXPECT_EQ(0x50, offsetof(psp_t, int21_retf_instructions));
   EXPECT_EQ(0x5c, offsetof(psp_t, fcb1));
-  EXPECT_EQ(0x5c, offsetof(psp_t, fcb2));
-  EXPECT_EQ(0x6c, offsetof(psp_t, cmdlen_length));
+  EXPECT_EQ(0x6c, offsetof(psp_t, fcb2));
+  EXPECT_EQ(0x80, offsetof(psp_t, cmdlen_length));
   EXPECT_EQ(0x81, offsetof(psp_t, cmdline));
-
-
-
-
-  
 }

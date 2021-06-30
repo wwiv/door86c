@@ -1,6 +1,7 @@
 #ifndef INCLUDED_DOS_PSP_H
 #define INCLUDED_DOS_PSP_H
 
+#include "cpu/memory_bits.h"
 #include <cstdint>
 #include <string>
 
@@ -15,16 +16,16 @@ struct psp_t {
   uint16_t ending_address;
   uint8_t reserved1;
   uint8_t call_to_dos_fn_dispatcher[5];
-  uint32_t addr_termination_code;
-  uint32_t addr_break_handler;
-  uint32_t addr_crit_error_handler;
+  door86::cpu::seg_address_t addr_termination_code;
+  door86::cpu::seg_address_t addr_break_handler;
+  door86::cpu::seg_address_t addr_crit_error_handler;
   uint16_t parent_psp_segment;
   uint8_t job_file_table[20];
   uint16_t environ_seg;
-  uint32_t last_int21_sssp;
+  door86::cpu::seg_address_t last_int21_sssp;
   uint16_t jft_size;
-  uint32_t jft_pointer;
-  uint32_t previous_psp_ptr;
+  door86::cpu::seg_address_t jft_pointer;
+  door86::cpu::seg_address_t previous_psp_ptr;
   uint32_t reserved2;
   uint16_t dos_version_to_return;
   uint8_t reserved3[14];

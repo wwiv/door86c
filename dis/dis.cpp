@@ -29,34 +29,40 @@ static std::string exe_signature(uint16_t sig) {
 }
 
 
-void dump_exe_info(const exe_info_t& info) {
-  std::cout << "binary size:               " << info.binary_size << std::endl;
-  std::cout << "num_relocs:                " << info.hdr.num_relocs << std::endl;
-  fmt::print("EXE Header:                {}\r\n", exe_signature(info.hdr.signature));
-  std::cout << "Bytes on last page :       " << info.hdr.bytes_in_last_block << std::endl;
-  std::cout << "Pages in file :            " << info.hdr.blocks_in_file << std::endl;
-  std::cout << "Relocations :              " << info.hdr.num_relocs << std::endl;
-  std::cout << "Paragraphs in header :     " << info.hdr.header_paragraphs << std::endl;
-  std::cout << "Header Size :              " << (16 * info.hdr.header_paragraphs) << std::endl;
-  std::cout << "Extra paragraphs needed :  " << info.hdr.min_extra_paragraphs << std::endl;
-  std::cout << "Extra paragraphs wanted :  " << info.hdr.max_extra_paragraphs << std::endl;
-  std::cout << "Initial stack location :   " << to_seg_off(info.hdr.ss, info.hdr.sp) << std::endl;
-  std::cout << "SP:                        0x" << std::hex << info.hdr.sp << std::endl;
-  std::cout << "Word checksum :            0x" << std::hex << info.hdr.checksum << std::endl;
-  std::cout << "Entry point :              " << info.hdr.ip << std::endl;
-  std::cout << "Relocation table address : 0x" << std::hex << info.hdr.reloc_table_offset
+void dump_exe_info(const Exe& exe) {
+  std::cout << "binary size:               " << exe.binary_size << std::endl;
+  std::cout << "num_relocs:                " << exe.hdr.num_relocs << std::endl;
+  fmt::print("EXE Header:                {}\r\n", exe_signature(exe.hdr.signature));
+  std::cout << "Bytes on last page :       " << exe.hdr.bytes_in_last_block << std::endl;
+  std::cout << "Pages in file :            " << exe.hdr.blocks_in_file << std::endl;
+  std::cout << "Relocations :              " << exe.hdr.num_relocs << std::endl;
+  std::cout << "Paragraphs in header :     " << exe.hdr.header_paragraphs << std::endl;
+  std::cout << "Header Size :              " << (16 * exe.hdr.header_paragraphs) << std::endl;
+  std::cout << "Extra paragraphs needed :  " << exe.hdr.min_extra_paragraphs << std::endl;
+  std::cout << "Extra paragraphs wanted :  " << exe.hdr.max_extra_paragraphs << std::endl;
+  std::cout << "Initial stack location :   " << to_seg_off(exe.hdr.ss, exe.hdr.sp) << std::endl;
+  std::cout << "SP:                        0x" << std::hex << exe.hdr.sp << std::endl;
+  std::cout << "Word checksum :            0x" << std::hex << exe.hdr.checksum << std::endl;
+  std::cout << "Entry point :              " << exe.hdr.ip << std::endl;
+  std::cout << "Relocation table address : 0x" << std::hex << exe.hdr.reloc_table_offset
             << std::endl;
   std::cout << "Memory needed :            ???" << std::endl; // << std::hex << info.hdr.
-  std::cout << "CS:                        0x" << std::hex << info.hdr.cs << std::endl;
-  std::cout << "Entry point:               " << (info.hdr.cs * 16) + info.hdr.ip << std::endl;
+  std::cout << "CS:                        0x" << std::hex << exe.hdr.cs << std::endl;
+  std::cout << "Entry point:               " << (exe.hdr.cs * 16) + exe.hdr.ip << std::endl;
   std::cout << "\r\n\n";
-  for (const auto& r : info.relos) {
+  for (const auto& r : exe.relos) {
     std::cout << "OLD Relo: " << r.segment << ":" << r.offset << std::endl;
   }
 }
 
-void disasm(FILE* fp, int code_offset, const std::string& format) { 
+static void disasm(const std::filesystem::path& filepath, int code_offset, const std::string& format) { 
   bool done{false};
+  FILE* fp = nullptr;
+  if (fp = fopen(filepath.string().c_str(), "rb"); !fp) {
+    VLOG(1) << "Unable to open file: " << filepath;
+    return;
+  }
+
   fseek(fp, code_offset, SEEK_SET);
   for (auto row = code_offset; !done; ) {
     char buf[1024];
@@ -98,6 +104,8 @@ int main(int argc, char** argv) {
   cmdline.add_argument(BooleanCommandLineArgument{"header", 'H', "Display EXE Header information.", true});
   cmdline.add_argument(BooleanCommandLineArgument{"disasm", 'D', "Display Byte information.", false});
   cmdline.add_argument({"format", 'F', "Format for byte information. (code | hex)", "hex"});
+  // Ignore this one. used by logger
+  cmdline.add_argument({"v", "verbose log", "0"});
   cmdline.set_no_args_allowed(true);
 
   if (!cmdline.Parse()) {
@@ -114,37 +122,24 @@ int main(int argc, char** argv) {
     return 1;
   }
   const auto& filename = cmdline.remaining().front();
-  FILE* fp = nullptr;
-  if (fp = fopen(filename.c_str(), "rb"); !fp) {
-    fmt::print("Unable to open file: [%s]\r\n", filename);
-    return 1;
-  }
-
-  char mz[2];
-  if (const auto num_read = fread(&mz, 1, 2, fp); num_read != 2) {
-    fmt::print("Unable to seek to start from: [%s]\r\n", filename);
-    return 1;
-  }
 
   int code_offset = 0x100;
-  if (const bool is_exe = (mz[0] == 'M' && mz[1] == 'Z'); is_exe) {
-    if (const auto oinfo = read_exe_header(fp, filename)) {
-      // set right code offset to skip header.
-      code_offset = oinfo.value().hdr.header_paragraphs * 0x10;
-      if (cmdline.barg("header")) {
-        dump_exe_info(oinfo.value());
-      }
-    } else {
-      std::cout << "Failed to read exe header.";
-      return EXIT_FAILURE;
+  if (const auto oinfo = read_exe_header(filename)) {
+    // set right code offset to skip header.
+    code_offset = oinfo.value().header_size();
+    if (cmdline.barg("header")) {
+      dump_exe_info(oinfo.value());
     }
+  } else {
+    std::cout << "Failed to read exe header.";
+    return EXIT_FAILURE;
   }
 
   if (cmdline.barg("disasm")) {
     if (cmdline.barg("header")) {
       fmt::print("\r\nOpcodes: \r\n");
     }
-    disasm(fp, code_offset, cmdline.sarg("format"));
+    disasm(filename, code_offset, cmdline.sarg("format"));
   }
 
   return EXIT_SUCCESS;
