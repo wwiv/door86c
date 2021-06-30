@@ -213,12 +213,15 @@ void CPU::call_interrupt(int num) {
   }
 }
 
-bool CPU::execute(uint16_t start_cs, uint16_t start_ip) { 
+bool CPU::execute(uint16_t start_cs, uint16_t start_ip) {
   core.sregs.cs = start_cs;
   core.ip = start_ip;
+  return execute();
+}
 
+bool CPU::execute() {
   while (running_) {
-    int pos = core.sregs.cs + core.ip;
+    int pos = (core.sregs.cs * 0x10) + core.ip;
     auto inst = decoder.next_instruction(&memory[pos]);
     core.ip += inst.len;
     const auto family = inst.op >> 4;

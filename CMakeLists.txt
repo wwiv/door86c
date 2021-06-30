@@ -24,5 +24,6 @@ target_include_directories(core PUBLIC ${CMAKE_SOURCE_DIR}/deps/wwiv)
 
 add_subdirectory(cpu)
 add_subdirectory(dis)
+add_subdirectory(door86)
 add_subdirectory(dos)
 

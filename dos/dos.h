@@ -20,11 +20,11 @@ public:
 
   // allocate a block of memory of size bytes, returns the starting segment;
   std::optional<uint16_t> allocate(size_t size);
+  void free(uint16_t seg);
 
 private:
   uint16_t start_seg_{0x0050};
   uint16_t end_seg_{0x07C0};
-
   uint16_t top_seg_;
 };
 
@@ -33,12 +33,10 @@ public:
   Dos() = default;
   ~Dos() = default;
 
-
-// todo
+      // todo
   // hold memory blocks
   //
-private:
-  DosMemoryManager mem_mgr_;
+  DosMemoryManager mem_mgr;
 };
 
 /*

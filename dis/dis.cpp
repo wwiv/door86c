@@ -123,7 +123,7 @@ int main(int argc, char** argv) {
   }
   const auto& filename = cmdline.remaining().front();
 
-  int code_offset = 0x100;
+  int code_offset = 0;
   if (const auto oinfo = read_exe_header(filename)) {
     // set right code offset to skip header.
     code_offset = oinfo.value().header_size();

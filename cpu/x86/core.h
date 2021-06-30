@@ -192,6 +192,8 @@ public:
   // opcode executing
 
   bool execute(uint16_t cs, uint16_t ip);
+  // execute using existing cs:ip
+  bool execute();
   void execute_0x0(const instruction_t& inst);
   void execute_0x8(const instruction_t& inst);
   void execute_0xB(const instruction_t& inst);

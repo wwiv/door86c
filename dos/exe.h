@@ -36,7 +36,11 @@ class Exe {
 public:
   uint32_t header_size() const { return hdr.header_paragraphs * 0x10; }
   // Calls load image on the exe specified
+  
   bool load_image(uint16_t base_segment, door86::cpu::Memory& mem);
+
+  /** Calculates how much memory is needed to load the exe.  file + extra paragraphs + PSP */
+  uint16_t memory_needed() const { return (hdr.min_extra_paragraphs * 16) + binary_size + 256;  }
 
   // data
   std::filesystem::path filepath;
@@ -51,13 +55,13 @@ public:
   // Where the loaded image will be located, this is 256 bytes after the seg (which
   // has the PSP)
   uint16_t image_seg;
-
 };
 
 std::optional<Exe> read_exe_header(const std::filesystem::path& filepath);
+bool is_exe(const std::filesystem::path& filepath);
 
 // Calls load image on the com file located at filepath
-bool load_image(const std::filesystem::path& filepath, uint16_t base_segment,
+bool load_image(const std::filesystem::path& filepath, uint16_t base_segment, uint32_t offset,
                 door86::cpu::Memory& mem);
 
 } // namespace door86::dos

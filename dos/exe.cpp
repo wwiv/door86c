@@ -18,6 +18,24 @@ namespace door86::dos {
 
 using namespace wwiv::core;
 
+bool is_exe(const std::filesystem::path& filepath) {
+  FILE* fp = nullptr;
+  if (fp = fopen(filepath.string().c_str(), "rb"); !fp) {
+    VLOG(1) << "Unable to open file: " << filepath;
+    return false;
+  }
+  // Close fp at exit, no matter how
+  ScopeExit at_exit([=] { fclose(fp); });
+
+  char mz[2];
+  if (const auto num_read = fread(&mz, 1, 2, fp); num_read != 2) {
+    VLOG(1) << "Unable to seek on file: " << filepath;
+    return false;
+  }
+
+  return mz[0] == 'M' && mz[1] == 'Z';
+}
+
 std::optional<Exe> read_exe_header(const std::filesystem::path& filepath) {
   VLOG(4) << __PRETTY_FUNCTION__ << ": " << filepath.string();
   if (!File::Exists(filepath)) {
@@ -40,6 +58,11 @@ std::optional<Exe> read_exe_header(const std::filesystem::path& filepath) {
   char mz[2];
   if (const auto num_read = fread(&mz, 1, 2, fp); num_read != 2) {
     VLOG(1) << "Unable to seek on file: " << filename;
+    return std::nullopt;
+  }
+
+  if (mz[0] != 'M' && mz[1] != 'Z') {
+    VLOG(1) << "Not an exe: " << filename;
     return std::nullopt;
   }
 
@@ -71,16 +94,17 @@ std::optional<Exe> read_exe_header(const std::filesystem::path& filepath) {
 }
 
 bool Exe::load_image(uint16_t base_segment, door86::cpu::Memory& mem) {
-  if (!door86::dos::load_image(filepath, base_segment, mem)) {
+  seg = base_segment;
+  image_seg = base_segment + 0x10;
+
+  if (!door86::dos::load_image(filepath, image_seg, header_size(), mem)) {
     return false;
   }
   loaded_ = true;
-  seg = base_segment;
-  image_seg = base_segment * 0x100;
   // fixup relo offsets
   for (const auto& relo : relos) {
     VLOG(1) << "Relocating offset at: " << relo.segment << ":" << relo.offset;
-    const uint32_t addr = (relo.segment * 0x10) + relo.offset;
+    const uint32_t addr = (relo.segment * 0x10) + (image_seg * 0x10) + relo.offset;
     auto relo_seg = mem.abs16(addr);
     relo_seg += image_seg;
     mem.abs16(addr, relo_seg);
@@ -88,7 +112,8 @@ bool Exe::load_image(uint16_t base_segment, door86::cpu::Memory& mem) {
   return true;
 }
 
-bool load_image(const std::filesystem::path& filepath, uint16_t base_segment, door86::cpu::Memory& mem) {
+bool load_image(const std::filesystem::path& filepath, uint16_t base_segment, uint32_t offset,
+                door86::cpu::Memory& mem) {
   if (!File::Exists(filepath)) {
     return false;
   }
@@ -98,7 +123,11 @@ bool load_image(const std::filesystem::path& filepath, uint16_t base_segment, do
     return false;
   }
 
-  const auto filesize = f.length();
+  const auto filesize = f.length() - offset;
+  if (offset) {
+    // skip header
+    f.Seek(offset, File::Whence::begin);
+  }
   if (f.Read(&mem[base_segment * 0x10], filesize) != filesize) {
     VLOG(1) << "Failed to read binary into memory";
   }
