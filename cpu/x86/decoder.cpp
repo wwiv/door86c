@@ -61,12 +61,12 @@ std::vector<op_code_data_t> create_opcode_metadata() {
     {0x2e, op_mask_notimpl, ""},
     {0x2f, op_mask_notimpl, ""},
 
-    {0x30, op_mask_notimpl, ""},
-    {0x31, op_mask_notimpl, ""},
-    {0x32, op_mask_notimpl, ""},
-    {0x33, op_mask_notimpl, ""},
-    {0x34, op_mask_notimpl, ""},
-    {0x35, op_mask_notimpl, ""},
+    {0x30, op_mask_modrm8, "XOR", 8, op_enc_t::rm_r},
+    {0x31, op_mask_modrm16, "XOR", 16, op_enc_t::rm_r},
+    {0x32, op_mask_modrm8, "XOR", 8, op_enc_t::r_rm},
+    {0x33, op_mask_modrm16, "XOR", 16, op_enc_t::r_rm},
+    {0x34, op_mask_imm8, "XOR", 8, op_enc_t::r_i},
+    {0x35, op_mask_imm16, "XOR", 16, op_enc_t::r_i},
     {0x36, op_mask_notimpl, ""},
     {0x37, op_mask_notimpl, ""},
     {0x38, op_mask_notimpl, ""},
@@ -182,10 +182,10 @@ std::vector<op_code_data_t> create_opcode_metadata() {
     {0x9e, op_mask_notimpl, ""},
     {0x9f, op_mask_notimpl, ""},
 
-    {0xA0, op_mask_notimpl, ""},
-    {0xA1, op_mask_notimpl, ""},
-    {0xA2, op_mask_notimpl, ""},
-    {0xA3, op_mask_notimpl, ""},
+    {0xA0, op_mask_imm8, "MOV", 8},
+    {0xA1, op_mask_imm16, "MOV", 16},
+    {0xA2, op_mask_imm8, "MOV", 8},
+    {0xA3, op_mask_imm16, "MOV", 16},
     {0xA4, op_mask_notimpl, ""},
     {0xA5, op_mask_notimpl, ""},
     {0xA6, op_mask_notimpl, ""},
@@ -219,21 +219,21 @@ std::vector<op_code_data_t> create_opcode_metadata() {
 
     {0xC0, op_mask_notimpl, ""},
     {0xC1, op_mask_notimpl, ""},
-    {0xC2, op_mask_notimpl, ""},
-    {0xC3, op_mask_notimpl, ""},
-    {0xC4, op_mask_notimpl, ""},
-    {0xC5, op_mask_notimpl, ""},
+    {0xC2, op_mask_imm16, "RET"},
+    {0xC3, op_mask_none, "RET"},
+    {0xC4, op_mask_modrm16, "LES"},
+    {0xC5, op_mask_modrm16, "LDS"},
     {0xC6, op_mask_notimpl, ""},
     {0xC7, op_mask_notimpl, ""},
     {0xC8, op_mask_notimpl, ""},
     {0xC9, op_mask_notimpl, ""},
-    {0xCa, op_mask_notimpl, ""},
-    {0xCb, op_mask_notimpl, ""},
+    {0xCA, op_mask_imm16, "RET"},
+    {0xCB, op_mask_none, "RET"},
     // INT3, ib, 4
-    {0xCc, op_mask_none, "INT"},
+    {0xCC, op_mask_none, "INT"},
     {0xCD, op_mask_imm8, "INT"},
-    {0xCe, op_mask_none, "INT"},
-    {0xCf, op_mask_notimpl, ""},
+    {0xCE, op_mask_none, "INT"},
+    {0xCF, op_mask_notimpl, ""},
 
     {0xD0, op_mask_notimpl, ""},
     {0xD1, op_mask_notimpl, ""},
@@ -260,7 +260,7 @@ std::vector<op_code_data_t> create_opcode_metadata() {
     {0xE5, op_mask_notimpl, ""},
     {0xE6, op_mask_notimpl, ""},
     {0xE7, op_mask_notimpl, ""},
-    {0xE8, op_mask_notimpl, ""},
+    {0xE8, op_mask_imm16, "CALL", 16, op_enc_t::none},
     {0xE9, op_mask_notimpl, ""},
     {0xEa, op_mask_notimpl, ""},
     {0xEb, op_mask_notimpl, ""},
@@ -281,7 +281,7 @@ std::vector<op_code_data_t> create_opcode_metadata() {
     {0xF9, op_mask_notimpl, ""},
     {0xFa, op_mask_notimpl, ""},
     {0xFb, op_mask_notimpl, ""},
-    {0xFc, op_mask_notimpl, ""},
+    {0xFC, op_mask_none, "CLD"},
     {0xFd, op_mask_notimpl, ""},
     {0xFe, op_mask_notimpl, ""},
     {0xFf, op_mask_notimpl, ""}};
@@ -331,7 +331,6 @@ bool instruction_t::has_modrm() {
   return door86::cpu::x86::has_modrm(metadata.mask);
 }
 
-
 instruction_t Decoder::next_instruction(uint8_t* o) {
   instruction_t i;
   // TODO(rushfan): add in prefix bytes here.
@@ -374,14 +373,13 @@ instruction_t Decoder::next_instruction(uint8_t* o) {
   if (has_modrm(i.metadata.mask)) {
     ++i.len;
     i.mdrm = parse_modrm(*o++);
-    if (i.mdrm.rm == 0x06 || i.mdrm.mod == 0x02) {
+    if ((i.mdrm.rm == 0x06 && i.mdrm.mod == 0) || i.mdrm.mod == 0x02) {
       i.len+=2;
       // disp16
       auto lsb = *o++;
       auto msb = *o++;
       i.operand16 = (msb << 8) | lsb;
-    }
-    else if (i.mdrm.rm == 0x01) {
+    } else if (i.mdrm.mod == 0x01) {
       i.len++;
       i.operand8 = *o++;
     }

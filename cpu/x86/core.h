@@ -158,21 +158,39 @@ struct sregs_t {
   }
 };
 
-constexpr int16_t CF = 0x0001;
-constexpr int16_t PF = 0x0004;
-constexpr int16_t AF = 0x0010;
-constexpr int16_t ZF = 0x0040;
-constexpr int16_t SF = 0x0080;
-constexpr int16_t TF = 0x0100;
-constexpr int16_t IF = 0x0200;
-constexpr int16_t DF = 0x0400;
-constexpr int16_t OF = 0x0800;
+constexpr uint16_t CF = 0x0001;
+constexpr uint16_t PF = 0x0004;
+constexpr uint16_t AF = 0x0010;
+constexpr uint16_t ZF = 0x0040;
+constexpr uint16_t SF = 0x0080;
+constexpr uint16_t TF = 0x0100;
+constexpr uint16_t IF = 0x0200;
+constexpr uint16_t DF = 0x0400;
+constexpr uint16_t OF = 0x0800;
+
+#define FLAG_SET(flags, flg) ((flags) |= (flg))
+#define FLAG_CLEAR(flags, flg) ((flags) &= ~(flg))
+#define FLAG_FLIP(flags, flg) ((flags) ^= (flg))
+#define FLAG_TEST(flags, flg) ((flags) & (flg))
+
+// Use to set a value of a flag only if the condution 'cond' is true
+#define FLAG_COND(cond, flags, flg)                                                                \
+  do {                                                                                             \
+    if (cond) {                                                                                    \
+      FLAG_SET((flags.flag), (flg));                                                               \
+    } else {                                                                                       \
+      FLAG_CLEAR((flags.flag), (flg));                                                             \
+    }                                                                                              \
+  } while (0);
 
 class flags_t {
 public:
   bool cf() { return flag & CF; }
   // bit 1 and 12-15 are always on
   void reset() { flag = 0xf002;  } 
+  void set(uint16_t flg) { flag |= flg; }
+  void clear(uint16_t flg) { flag &= !flg; }
+  bool test(uint16_t flg) { return flag & flg; }
 
   uint16_t flag;
 };
@@ -195,9 +213,21 @@ public:
   // execute using existing cs:ip
   bool execute();
   void execute_0x0(const instruction_t& inst);
+  void execute_0x1(const instruction_t& inst);
+  void execute_0x2(const instruction_t& inst);
+  void execute_0x3(const instruction_t& inst);
+  void execute_0x4(const instruction_t& inst);
+  void execute_0x5(const instruction_t& inst);
+  void execute_0x6(const instruction_t& inst);
+  void execute_0x7(const instruction_t& inst);
   void execute_0x8(const instruction_t& inst);
+  void execute_0x9(const instruction_t& inst);
+  void execute_0xA(const instruction_t& inst);
   void execute_0xB(const instruction_t& inst);
   void execute_0xC(const instruction_t& inst);
+  void execute_0xD(const instruction_t& inst);
+  void execute_0xE(const instruction_t& inst);
+  void execute_0xF(const instruction_t& inst);
 
   // stack handling
 
@@ -207,6 +237,12 @@ public:
   // interrupt handling
 
   void call_interrupt(int num);
+
+  // flags
+
+  // flags for OF, SF, ZF, AF, PF CF for 8 bit values
+  void parity_szp8(uint8_t oval, uint8_t nval);
+  void parity_szp16(uint16_t oval, uint16_t nval);
 
   cpu_core core;
   Decoder decoder;

@@ -30,7 +30,7 @@ constexpr uint32_t op_mask_reg_is_sreg = 0x100;
 // this one is not yet implemented
 constexpr uint32_t op_mask_notimpl = 0x80000000;
 
-enum class op_enc_t { none, r_rm, rm_r };
+enum class op_enc_t { none, r_rm, rm_r, rm_i, r_i };
 
 struct op_code_data_t {
   uint8_t op;
