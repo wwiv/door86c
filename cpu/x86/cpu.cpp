@@ -1,4 +1,4 @@
-#include "cpu/x86/core.h"
+#include "cpu/x86/cpu.h"
 #include "cpu/x86/rmm.h"
 
 #include "core/log.h"
@@ -10,81 +10,79 @@ namespace door86::cpu::x86 {
 
 CPU::CPU() : core(), decoder(), memory(1 << 20) {}
 
-// sets an r16 value (either reg or sreg depending on the instruction)
-static void r16(const instruction_t& inst, cpu_core& core, uint16_t value) { 
-  if (inst.metadata.mask & op_mask_reg_is_sreg) {
-    core.sregs.set(inst.mdrm.reg, value);
-  }
-  core.regs.x.set(inst.mdrm.reg, value);
-}
-
-
 // TODO(rushfan): Make generic way to set flags after operations
 // mostly add
 void CPU::execute_0x0(const instruction_t& inst) {
   switch (inst.op & 0x0f) {
   // "0x00":"add r/m8, r8",
   case 0x0: {
-    auto rm = rmm8(inst, core, memory);
-    const auto reg8 = core.regs.h.get(inst.mdrm.reg);
-    rm += reg8;
+    auto rm = rmm8(inst);
+    rm += r8(inst);
   } break;
   // "0x01" : "add r/m16/32, r16/32",
   case 0x1: {
-    auto rm = rmm16(inst, core, memory);
-    rm += r16(inst, core);
+    auto rm = rmm16(inst);
+    rm += r16(inst);
   } break;
   // 02/r":"add r8, r/m8
   case 0x2: {
-    const auto reg8 = core.regs.h.get(inst.mdrm.reg);
-    const auto rm8 = rmm8(inst, core, memory);
-    core.regs.h.set(inst.mdrm.reg, rm8.get() + reg8);
+    auto r = r8(inst);
+    const auto rm = rmm8(inst);
+    r += rm;
   } break;
   // 03":"add r16/32, r/m16/32
   case 0x3: {
-    auto rm = rmm16(inst, core, memory);
-    const auto reg16 = r16(inst, core);
-    r16(inst, core, reg16 + rm.get());
+    auto r = r16(inst);
+    auto rm = rmm16(inst);
+    r += rm;
   } break;
   // 04":"add al, imm8
-  case 0x4: core.regs.h.al += inst.operand8; break;
+  case 0x4: {
+    auto r = r8(&core.regs.h.al);
+    r += inst.operand8;
+  } break;
   // 05":"add ax, imm16/32
-  case 0x5: core.regs.x.ax += inst.operand16; break;
+  case 0x5: {
+    auto r = r16(&core.regs.x.ax);
+    r += inst.operand16;
+  } break;
   // 06 PUSH ES
   case 0x6: push(core.sregs.es); break;
   // 07 POP ES
   case 0x7: core.sregs.es = pop(); break;
   // 0x08: OR r/m8, r8
   case 0x8: {
-    const auto r = core.regs.h.get(inst.mdrm.reg);
-    auto rm = rmm8(inst, core, memory);
-    rm.set(rm.get() | r);
+    const auto r = r8(inst);
+    auto rm = rmm8(inst);
+    rm |= r;
   } break;
   // 0x09: OR r/m16, r16
   case 0x9: {
     const auto r = core.regs.x.get(inst.mdrm.reg);
-    auto rm = rmm16(inst, core, memory);
-    rm.set(rm.get() | r);
+    auto rm = rmm16(inst);
+    rm |= r;
   } break;
   // 0x0A: OR r8, r/m8
   case 0xA: {
-    const auto r = core.regs.h.get(inst.mdrm.reg);
-    const auto rm = rmm8(inst, core, memory);
-    core.regs.h.set(inst.mdrm.reg, r | rm.get());
+    auto r = r8(inst);
+    const auto rm = rmm8(inst);
+    r |= rm;
   } break;
   // 0x0B: OR r16, r/m16
   case 0xB: {
-    const auto r = core.regs.x.get(inst.mdrm.reg);
-    const auto rm = rmm16(inst, core, memory);
-    core.regs.x.set(inst.mdrm.reg,  r | rm.get());
+    auto r = r16(inst);
+    const auto rm = rmm16(inst);
+    r |= rm;
   } break;
   // 0x0C: OR AL, imm8
   case 0xC: {
-    core.regs.h.al |= inst.operand8;
+    auto r = r8(&core.regs.h.al);
+    r |= inst.operand8;
   } break;
   // 0x0D: OR AX, imm16
   case 0xD: {
-    core.regs.x.ax |= inst.operand16;
+    auto r = r16(&core.regs.x.ax);
+    r |= inst.operand16;
   } break;
   // 0x0E: PUSH CS
   case 0xE: push(core.sregs.cs); break;
@@ -94,7 +92,59 @@ void CPU::execute_0x0(const instruction_t& inst) {
 }
 
 void CPU::execute_0x1(const instruction_t& inst) {
+  const bool cf = core.flags.cflag();
+  // 0x10-0x15: ADC
   switch (inst.op & 0x0f) {
+  // "0x10":"ADC r/m8, r8",
+  case 0x0: {
+    auto rm = rmm8(inst);
+    rm += r8(inst);
+    if (cf) {
+      rm += 1;
+    }
+  } break;
+  // "0x01" : "add r/m16/32, r16/32",
+  case 0x1: {
+    auto rm = rmm16(inst);
+    rm += r16(inst);
+    if (cf) {
+      rm += 1;
+    }
+  } break;
+  // 02/r":"add r8, r/m8
+  case 0x2: {
+    auto r = r8(inst);
+    const auto rm = rmm8(inst);
+    r += rm;
+    if (cf) {
+      r += 1;
+    }
+  } break;
+  // 03":"adc r16/32, r/m16/32
+  case 0x3: {
+    auto r = r16(inst);
+    auto rm = rmm16(inst);
+    r += rm;
+    if (cf) {
+      r += 1;
+    }
+  } break;
+  // 14":"ADC al, imm8
+  case 0x4: {
+    auto r = r8(&core.regs.h.al);
+    r += inst.operand8;
+    if (cf) {
+      r += 1;
+    }
+  } break;
+  // 15":"ADC ax, imm16/32
+  case 0x5: {
+    auto r = r16(&core.regs.x.ax);
+    r += inst.operand16;
+    if (cf) {
+      r += 1;
+    }
+  } break;
   // 0x16: PUSH SS
   case 0x6: push(core.sregs.ss); break;
   // 0x17: POP SS
@@ -106,46 +156,98 @@ void CPU::execute_0x1(const instruction_t& inst) {
   }
 }
 void CPU::execute_0x2(const instruction_t& inst) {
-  switch (inst.op & 0x0f) {}
+  switch (inst.op & 0x0f) {
+    // 0x22: AND r/m8, r8
+  case 0x0: {
+    auto rm = rmm8(inst);
+    rm &= r8(inst);
+  } break;
+  // "0x21" : "AND r/m16/32, r16/32",
+  case 0x1: {
+    auto rm = rmm16(inst);
+    rm &= r16(inst);
+  } break;
+  // 02/r":"AND r8, r/m8
+  case 0x2: {
+    auto r = r8(inst);
+    const auto rm = rmm8(inst);
+    r &= rm;
+  } break;
+  // 23":"AND r16/32, r/m16/32
+  case 0x3: {
+    auto r = r16(inst);
+    auto rm = rmm16(inst);
+    r &= rm;
+  } break;
+  // 24":"AND al, imm8
+  case 0x4: {
+    auto r = r8(&core.regs.h.al);
+    r &= inst.operand8;
+  } break;
+  // 25":"AND ax, imm16/32
+  case 0x5: {
+    auto r = r16(&core.regs.x.ax);
+    r &= inst.operand16;
+  } break;
+  }
 }
 
 void CPU::execute_0x3(const instruction_t& inst) {
   switch (inst.op & 0x0f) {
   case 0x0: {
     const auto r = core.regs.h.get(inst.mdrm.reg);
-    auto rm = rmm8(inst, core, memory);
+    auto rm = rmm8(inst);
     rm ^= r;
   } break;
   case 0x1: {
     const auto r = core.regs.x.get(inst.mdrm.reg);
-    auto rm = rmm16(inst, core, memory);
+    auto rm = rmm16(inst);
     rm ^= r;
   } break;
   case 0x2: {
-    const auto r = core.regs.h.get(inst.mdrm.reg);
-    const auto rm = rmm8(inst, core, memory);
-    core.regs.h.set(inst.mdrm.reg, r ^ rm.get());
+    auto r = r8(inst);
+    const auto rm = rmm8(inst);
+    r ^= rm;
   } break;
   case 0x3: {
-    const auto r = core.regs.x.get(inst.mdrm.reg);
-    const auto rm = rmm16(inst, core, memory);
-    core.regs.x.set(inst.mdrm.reg, r ^ rm.get());
+    auto r = r16(inst);
+    auto rm = rmm16(inst);
+    r ^= rm;
   } break;
   case 0x4: {
-    core.regs.h.al ^= inst.operand8;
+    auto r = r8(&core.regs.h.al);
+    r ^= inst.operand8;
   } break;
+  // 25":"XOR ax, imm16/32
   case 0x5: {
-    core.regs.x.ax ^= inst.operand16;
+    auto r = r16(&core.regs.x.ax);
+    r ^= inst.operand16;
   } break;
   }
 }
 
+// INC and DEC
 void CPU::execute_0x4(const instruction_t& inst) {
-  switch (inst.op & 0x0f) {}
+  const auto dec = inst.op & 0x08;
+  const auto regnum = inst.op & 0x07;
+  auto r = r16(core.regs.x.regptr(regnum));
+  if (dec) {
+    r -= 1;
+  } else {
+    r += 1;  
+  }
 }
 
+// PUSH and POP
 void CPU::execute_0x5(const instruction_t& inst) {
-  switch (inst.op & 0x0f) {}
+  const auto popd = inst.op & 0x08;
+  const auto regnum = inst.op & 0x07;
+  auto r = r16(core.regs.x.regptr(regnum));
+  if (popd) {
+    r.set(pop());
+  } else {
+    push(r.get());
+  }
 }
 
 void CPU::execute_0x6(const instruction_t& inst) {
@@ -163,30 +265,30 @@ void CPU::execute_0x8(const instruction_t& inst) {
     // only add if reg == 0
     switch (inst.mdrm.reg) {
     case 0x0: {
-      auto regmem16 = rmm16(inst, core, memory);
+      auto regmem16 = rmm16(inst);
       regmem16 += inst.operand8;
     } break;
     default: {
       VLOG(1) << "Unhandled submode of 0x83: " << inst.mdrm.reg;
-      auto regmem16 = rmm16(inst, core, memory);
+      auto regmem16 = rmm16(inst);
       regmem16 += inst.operand8;
     } break;
     }
   } break;
   // "8A/r":"mov r8, r/m8",
   case 0xA: {
-    auto regmem8 = rmm8(inst, core, memory);
+    auto regmem8 = rmm8(inst);
     core.regs.h.set(inst.mdrm.reg, regmem8.get());
   } break;
   // "8D":"lea r16/32, m",
   case 0xD: {
-    r16(inst, core, effective_address(inst, core));
+    r16(inst).set(effective_address(inst, core));
   } break;
   // "8E/r":"mov Sreg, r/m16",
   case 0xE: {
-    auto regmem16 = rmm16(inst, core, memory);
+    auto regmem16 = rmm16(inst);
     // actually segment per metadata
-    r16(inst, core, regmem16.get());
+    r16(inst).set(regmem16.get());
   } break;
   }
 }
@@ -400,6 +502,63 @@ void CPU::parity_szp16(uint16_t oval, uint16_t nval) {
   FLAG_COND(nval & 0x8000, core.flags, SF);
   FLAG_COND(nval == 0, core.flags, ZF);
   FLAG_COND(pc, core.flags, PF);
+}
+
+// RMM
+
+// returns the offset for the effective address described by a modrm byte
+// returns the rm portion for the modrm
+Rmm<RmmType::EITHER, uint8_t> CPU::rmm8(const instruction_t& inst) {
+  if (inst.mdrm.mod == 0x03) {
+    // mod 3 returns a reference to a CPU register
+    return Rmm<RmmType::EITHER, uint8_t>(&core, core.regs.h.regptr(inst.mdrm.rm));
+  }
+  // Pick the overridden segment, or just the default one for the instruction.
+  const auto seg = core.sregs.get(inst.seg_index());
+  if (inst.mdrm.mod == 0 && inst.mdrm.rm == 0x06) {
+    const auto offset =
+        inst.metadata.bits == 8 ? inst.operand8 : static_cast<uint8_t>(inst.operand16 & 0xff);
+    return Rmm<RmmType::EITHER, uint8_t>(&core, &memory, seg, offset);
+  }
+  const auto offset = effective_address(inst, core);
+  return Rmm<RmmType::EITHER, uint8_t>(&core, &memory, seg, offset);
+}
+
+Rmm<RmmType::EITHER, uint16_t> CPU::rmm16(const instruction_t& inst) {
+  if (inst.mdrm.mod == 0x03) {
+    // mod 3 returns a reference to a CPU register.
+    // don't ue r16 since that applies segment override, and ModR/M bytes
+    // in mod 3 don't ever use segment registers.
+    return Rmm<RmmType::EITHER, uint16_t>(&core, core.regs.x.regptr(inst.mdrm.rm));
+  }
+  const auto seg = core.sregs.get(inst.seg_index());
+  if (inst.mdrm.mod == 0 && inst.mdrm.rm == 0x06) {
+    const auto offset = inst.metadata.bits == 8 ? inst.operand8 : inst.operand16;
+    return Rmm<RmmType::EITHER, uint16_t>(&core, &memory, seg, offset);
+  }
+  const auto offset = effective_address(inst, core);
+  return Rmm<RmmType::EITHER, uint16_t>(&core, &memory, seg, offset);
+}
+
+
+// returns the register for an r16
+Rmm<RmmType::REGISTER, uint8_t> CPU::r8(const instruction_t& inst) {
+  return Rmm<RmmType::REGISTER, uint8_t>(&core, core.regs.h.regptr(inst.mdrm.reg));
+}
+
+Rmm<RmmType::REGISTER, uint16_t> CPU::r16(const instruction_t& inst) {
+  if (inst.metadata.mask & op_mask_reg_is_sreg) {
+    return Rmm<RmmType::REGISTER, uint16_t>(&core, core.sregs.regptr(inst.mdrm.reg));
+  }
+  return Rmm<RmmType::REGISTER, uint16_t>(&core, core.regs.x.regptr(inst.mdrm.reg));
+}
+
+Rmm<RmmType::REGISTER, uint8_t> CPU::r8(uint8_t* reg) {
+  return Rmm<RmmType::REGISTER, uint8_t>(&core, reg);
+}
+
+Rmm<RmmType::REGISTER, uint16_t> CPU::r16(uint16_t* reg) {
+  return Rmm<RmmType::REGISTER, uint16_t>(&core, reg);
 }
 
 

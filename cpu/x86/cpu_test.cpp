@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include "gmock/gmock.h"
 
-#include "cpu/x86/core.h"
+#include "cpu/x86/cpu.h"
 #include "cpu/x86/decoder.h"
 #include "cpu/x86/cpu_fixture.h"
 #include <iostream>

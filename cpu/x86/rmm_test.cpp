@@ -2,7 +2,7 @@
 
 #include "cpu/x86/decoder.h"
 #include "cpu/memory.h"
-#include "cpu/x86/core.h"
+#include "cpu/x86/cpu.h"
 #include "cpu/x86/rmm.h"
 #include <iostream>
 
@@ -13,10 +13,18 @@ class RmmTest : public testing::Test {
 public:
   RmmTest() { }
 
-  Rmm<uint16_t> ax() { return Rmm<uint16_t>(&core, &core.regs.x.ax); };
-  Rmm<uint16_t> bx() { return Rmm<uint16_t>(&core, &core.regs.x.bx); };
-  Rmm<uint16_t> cx() { return Rmm<uint16_t>(&core, &core.regs.x.cx); };
-  Rmm<uint16_t> dx() { return Rmm<uint16_t>(&core, &core.regs.x.dx); };
+  Rmm<RmmType::REGISTER, uint16_t> ax() {
+    return Rmm<RmmType::REGISTER, uint16_t>(&core, &core.regs.x.ax);
+  };
+  Rmm<RmmType::REGISTER, uint16_t> bx() {
+    return Rmm<RmmType::REGISTER, uint16_t>(&core, &core.regs.x.bx);
+  };
+  Rmm<RmmType::REGISTER, uint16_t> cx() {
+    return Rmm<RmmType::REGISTER, uint16_t>(&core, &core.regs.x.cx);
+  };
+  Rmm<RmmType::REGISTER, uint16_t> dx() {
+    return Rmm<RmmType::REGISTER, uint16_t>(&core, &core.regs.x.dx);
+  };
 
   cpu_core core;
   Decoder decoder;
@@ -26,14 +34,14 @@ public:
 TEST_F(RmmTest, MemoryAccess) { 
   // cpu_core* core, Memory* mem, uint16_t seg, uint16_t off
   memory.set<uint16_t>(10, 0, 0xcafe);
-  Rmm<uint16_t> rmm(&core, &memory, 10, 0);
+  Rmm<RmmType::EITHER, uint16_t> rmm(&core, &memory, 10, 0);
   ASSERT_EQ(0xCAFE, rmm.get());
 }
 
 TEST_F(RmmTest, RegisterAccess) {
   // cpu_core* core, Memory* mem, uint16_t seg, uint16_t off
   core.regs.x.cx = 0xCAFE;
-  Rmm<uint16_t> rmm(&core, &core.regs.x.cx);
+  Rmm<RmmType::EITHER, uint16_t> rmm(&core, &core.regs.x.cx);
   ASSERT_EQ(0xCAFE, rmm.get());
 }
 

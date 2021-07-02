@@ -10,11 +10,11 @@ include(GoogleTest)
 add_library(cpu 
   "memory.cpp"
   "x86/decoder.cpp"
-  "x86/core.cpp"
+  "x86/cpu.cpp"
   "x86/rmm.cpp"
   )
 target_link_libraries(cpu PRIVATE fmt::fmt-header-only)
-# target_compile_options(cpu PUBLIC /FAcs)
+target_compile_options(cpu PUBLIC /FAcs)
 
 add_library(cpu_fixtures
   "x86/cpu_fixture.cpp"
@@ -22,7 +22,7 @@ add_library(cpu_fixtures
 target_link_libraries(cpu_fixtures PRIVATE core fmt::fmt-header-only)
 
 add_executable(cpu_tests 
- "x86/core_test.cpp"
+ "x86/cpu_test.cpp"
 )
 target_link_libraries(cpu_tests cpu cpu_fixtures GTest::gtest_main)
 GTEST_DISCOVER_TESTS(cpu_tests)

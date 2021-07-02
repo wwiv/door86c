@@ -1,5 +1,5 @@
-#ifndef INCLUDED_CPU_X86_CORE_H
-#define INCLUDED_CPU_X86_CORE_H
+#ifndef INCLUDED_CPU_X86_REGS_H
+#define INCLUDED_CPU_X86_REGS_H
 
 #include "cpu/memory.h"
 #include "cpu/x86/decoder.h"
@@ -153,7 +153,18 @@ struct sregs_t {
     // TODO(rushfan): GPF? Crash? What?
   }
 
-  uint16_t get(segment_t n) { return get(static_cast<int>(n));
+  uint16_t get(segment_t n) { return get(static_cast<int>(n)); }
+
+  uint16_t* regptr(int n) {
+    switch (n) {
+    case 0: return &es;
+    case 1: return &cs;
+    case 2: return &ss;
+    case 3: return &ds;
+    case 4: return &fs;
+    case 5: return &gs;
+    }
+    return nullptr;
   }
 };
 
@@ -176,9 +187,9 @@ constexpr uint16_t OF = 0x0800;
 #define FLAG_COND(cond, flags, flg)                                                                \
   do {                                                                                             \
     if (cond) {                                                                                    \
-      FLAG_SET((flags.value_), (flg));                                                               \
+      FLAG_SET((flags.value_), (flg));                                                             \
     } else {                                                                                       \
-      FLAG_CLEAR((flags.value_), (flg));                                                             \
+      FLAG_CLEAR((flags.value_), (flg));                                                           \
     }                                                                                              \
   } while (0);
 
@@ -193,7 +204,7 @@ public:
   inline bool iflag() { return value_ & IF; }
   inline bool dflag() { return value_ & DF; }
   inline bool oflag() { return value_ & OF; }
-  
+
   // set
 
   inline void cflag(bool b) {
@@ -216,9 +227,9 @@ public:
   }
   inline void zflag(bool b) {
     if (b)
-      value_ |= CF;
+      value_ |= ZF;
     else
-      value_ &= ~CF;
+      value_ &= ~ZF;
   }
   inline void sflag(bool b) {
     if (b)
@@ -252,7 +263,7 @@ public:
   }
 
   // bit 1 and 12-15 are always on
-  inline void reset() { value_ = 0xf002; } 
+  inline void reset() { value_ = 0xf002; }
   inline void set(uint16_t flg) { value_ |= flg; }
   inline void clear(uint16_t flg) { value_ &= !flg; }
   inline bool test(uint16_t flg) { return value_ & flg; }
@@ -260,72 +271,6 @@ public:
   uint16_t value_{0xf002};
 };
 
-class cpu_core {
-public:
-  regs_t  regs;
-  sregs_t sregs;
-  flags_t flags;
-  uint16_t ip{0};
-};
+} // namespace door86::cpu::x86
 
-class CPU {
-public:
-  CPU();
-
-  // opcode executing
-  // TODO(rushfan): Rebucket these into the following
-  /** 
-    Opcodes in octal; groups/classes:
-    * 000-077: arith-logical operations: ADD, ADC,SUB, SBB,AND...
-      – 0P[0-7], where P in {0: add, 1: or, 2: adc, 3: sbb, 4: and, 5: sub, 6: xor, 7: cmp}
-    * 100-177: INC/PUSH/POP, Jcc,...
-    * 200-277: data movement: MOV,LODS,STOS,...
-    * 300-377: misc and escape groups  
-  */
-
-  bool execute(uint16_t cs, uint16_t ip);
-  // execute using existing cs:ip
-  bool execute();
-  void execute_0x0(const instruction_t& inst);
-  void execute_0x1(const instruction_t& inst);
-  void execute_0x2(const instruction_t& inst);
-  void execute_0x3(const instruction_t& inst);
-  void execute_0x4(const instruction_t& inst);
-  void execute_0x5(const instruction_t& inst);
-  void execute_0x6(const instruction_t& inst);
-  void execute_0x7(const instruction_t& inst);
-  void execute_0x8(const instruction_t& inst);
-  void execute_0x9(const instruction_t& inst);
-  void execute_0xA(const instruction_t& inst);
-  void execute_0xB(const instruction_t& inst);
-  void execute_0xC(const instruction_t& inst);
-  void execute_0xD(const instruction_t& inst);
-  void execute_0xE(const instruction_t& inst);
-  void execute_0xF(const instruction_t& inst);
-
-  // stack handling
-
-  void push(uint16_t val);
-  uint16_t pop();
-
-  // interrupt handling
-
-  void call_interrupt(int num);
-
-  // flags
-
-  // flags for OF, SF, ZF, AF, PF CF for 8 bit values
-  void parity_szp8(uint8_t oval, uint8_t nval);
-  void parity_szp16(uint16_t oval, uint16_t nval);
-
-  cpu_core core;
-  Decoder decoder;
-  Memory memory;
-
-private:
-  bool running_{true};
-};
-
-
-}
 #endif

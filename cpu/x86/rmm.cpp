@@ -1,5 +1,5 @@
 #include "cpu/x86/rmm.h"
-#include "cpu/x86/core.h"
+#include "cpu/x86/cpu.h"
 
 #include "core/log.h"
 #include "fmt/format.h"
@@ -9,11 +9,16 @@
 namespace door86::cpu::x86 {
 //
 // returns the register for an r16
-uint16_t r16(const instruction_t& inst, cpu_core& core) {
+Rmm<RmmType::REGISTER, uint16_t> r16(const instruction_t& inst, cpu_core& core) {
   if (inst.metadata.mask & op_mask_reg_is_sreg) {
-    return core.sregs.get(inst.mdrm.reg);
+    return Rmm<RmmType::REGISTER, uint16_t>(&core, core.sregs.regptr(inst.mdrm.reg));
   }
-  return core.regs.x.get(inst.mdrm.reg);
+  return Rmm<RmmType::REGISTER, uint16_t>(&core, core.regs.x.regptr(inst.mdrm.reg));
+}
+
+// returns the register for an r16
+Rmm<RmmType::REGISTER, uint8_t> r8(const instruction_t& inst, cpu_core& core) {
+  return Rmm<RmmType::REGISTER, uint8_t>(&core, core.regs.h.regptr(inst.mdrm.reg));
 }
 
 // base without any displacement.
@@ -55,36 +60,36 @@ uint16_t effective_address(const instruction_t& inst, const cpu_core& core) {
 
 // returns the offset for the effective address described by a modrm byte
 // returns the rm portion for the modrm
-Rmm<uint8_t> rmm8(const instruction_t& inst, cpu_core& core, Memory& mem) {
+Rmm<RmmType::EITHER, uint8_t> rmm8(const instruction_t& inst, cpu_core& core, Memory& mem) {
   if (inst.mdrm.mod == 0x03) {
     // mod 3 returns a reference to a CPU register
-    return Rmm<uint8_t>(&core, core.regs.h.regptr(inst.mdrm.rm));
+    return Rmm<RmmType::EITHER, uint8_t>(&core, core.regs.h.regptr(inst.mdrm.rm));
   }
   // Pick the overridden segment, or just the default one for the instruction.
   const auto seg = core.sregs.get(inst.seg_index());
   if (inst.mdrm.mod == 0 && inst.mdrm.rm == 0x06) {
     const auto offset =
         inst.metadata.bits == 8 ? inst.operand8 : static_cast<uint8_t>(inst.operand16 & 0xff);
-    return Rmm<uint8_t>(&core, &mem, seg, offset);
+    return Rmm<RmmType::EITHER, uint8_t>(&core, &mem, seg, offset);
   }
   const auto offset = effective_address(inst, core);
-  return Rmm<uint8_t>(&core, &mem, seg, offset);
+  return Rmm<RmmType::EITHER, uint8_t>(&core, &mem, seg, offset);
 }
 
-Rmm<uint16_t> rmm16(const instruction_t& inst, cpu_core& core, Memory& mem) {
+Rmm<RmmType::EITHER, uint16_t> rmm16(const instruction_t& inst, cpu_core& core, Memory& mem) {
   if (inst.mdrm.mod == 0x03) {
     // mod 3 returns a reference to a CPU register.
     // don't ue r16 since that applies segment override, and ModR/M bytes
     // in mod 3 don't ever use segment registers.
-    return Rmm<uint16_t>(&core, core.regs.x.regptr(inst.mdrm.rm));
+    return Rmm<RmmType::EITHER, uint16_t>(&core, core.regs.x.regptr(inst.mdrm.rm));
   }
   const auto seg = core.sregs.get(inst.seg_index());
   if (inst.mdrm.mod == 0 && inst.mdrm.rm == 0x06) {
     const auto offset = inst.metadata.bits == 8 ? inst.operand8 : inst.operand16;
-    return Rmm<uint16_t>(&core, &mem, seg, offset);
+    return Rmm<RmmType::EITHER, uint16_t>(&core, &mem, seg, offset);
   }
   const auto offset = effective_address(inst, core);
-  return Rmm<uint16_t>(&core, &mem, seg, offset);
+  return Rmm<RmmType::EITHER, uint16_t>(&core, &mem, seg, offset);
 }
 
 }
