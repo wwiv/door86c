@@ -20,7 +20,6 @@ struct regs16 {
   uint16_t bp;
   uint16_t si;
   uint16_t di;
-  uint16_t cflag;
 
   uint16_t get(int n) {
     switch (n) {
@@ -54,14 +53,14 @@ struct regs16 {
 
   void set(int n, uint16_t val) {
     switch (n) {
-    case 0: ax = val;
-    case 1: cx = val;
-    case 2: dx = val;
-    case 3: bx = val;
-    case 4: sp = val;
-    case 5: bp = val;
-    case 6: si = val;
-    case 7: di = val;
+    case 0: ax = val; break;
+    case 1: cx = val; break;
+    case 2: dx = val; break;
+    case 3: bx = val; break;
+    case 4: sp = val; break;
+    case 5: bp = val; break;
+    case 6: si = val; break;
+    case 7: di = val; break;
     }
   }
 };
@@ -89,14 +88,14 @@ struct regs8 {
 
   void set(int n, uint8_t val) {
     switch (n) {
-    case 0: al = val;
-    case 1: cl = val;
-    case 2: dl = val;
-    case 3: bl = val;
-    case 4: ah = val;
-    case 5: ch = val;
-    case 6: dh = val;
-    case 7: bh = val;
+    case 0: al = val; break;
+    case 1: cl = val; break;
+    case 2: dl = val; break;
+    case 3: bl = val; break;
+    case 4: ah = val; break;
+    case 5: ch = val; break;
+    case 6: dh = val; break;
+    case 7: bh = val; break;
     }
   }
 
@@ -122,12 +121,12 @@ union regs_t {
 };
 
 struct sregs_t {
-  uint16_t cs;
-  uint16_t es;
-  uint16_t ds;
-  uint16_t fs;
-  uint16_t gs;
-  uint16_t ss;
+  uint16_t cs{0};
+  uint16_t es{0};
+  uint16_t ds{0};
+  uint16_t fs{0};
+  uint16_t gs{0};
+  uint16_t ss{0};
   // ES = 0, CS = 1, SS = 2, DS = 3, FS = 4, and GS = 5.
   uint16_t get(int n) {
     switch (n) {
@@ -144,12 +143,12 @@ struct sregs_t {
 
   void set(int n, uint16_t value) {
     switch (n) {
-    case 0: es = value;
-    case 1: cs = value;
-    case 2: ss = value;
-    case 3: ds = value;
-    case 4: fs = value;
-    case 5: gs = value;
+    case 0: es = value; break;
+    case 1: cs = value; break;
+    case 2: ss = value; break;
+    case 3: ds = value; break;
+    case 4: fs = value; break;
+    case 5: gs = value; break;
     }
     // TODO(rushfan): GPF? Crash? What?
   }
@@ -177,22 +176,88 @@ constexpr uint16_t OF = 0x0800;
 #define FLAG_COND(cond, flags, flg)                                                                \
   do {                                                                                             \
     if (cond) {                                                                                    \
-      FLAG_SET((flags.flag), (flg));                                                               \
+      FLAG_SET((flags.value_), (flg));                                                               \
     } else {                                                                                       \
-      FLAG_CLEAR((flags.flag), (flg));                                                             \
+      FLAG_CLEAR((flags.value_), (flg));                                                             \
     }                                                                                              \
   } while (0);
 
 class flags_t {
 public:
-  bool cf() { return flag & CF; }
-  // bit 1 and 12-15 are always on
-  void reset() { flag = 0xf002;  } 
-  inline void set(uint16_t flg) { flag |= flg; }
-  inline void clear(uint16_t flg) { flag &= !flg; }
-  bool test(uint16_t flg) { return flag & flg; }
+  inline bool cflag() { return value_ & CF; }
+  inline bool pflag() { return value_ & PF; }
+  inline bool aflag() { return value_ & AF; }
+  inline bool zflag() { return value_ & ZF; }
+  inline bool sflag() { return value_ & ZF; }
+  inline bool tflag() { return value_ & TF; }
+  inline bool iflag() { return value_ & IF; }
+  inline bool dflag() { return value_ & DF; }
+  inline bool oflag() { return value_ & OF; }
+  
+  // set
 
-  uint16_t flag;
+  inline void cflag(bool b) {
+    if (b)
+      value_ |= CF;
+    else
+      value_ &= ~CF;
+  }
+  inline void pflag(bool b) {
+    if (b)
+      value_ |= PF;
+    else
+      value_ &= ~PF;
+  }
+  inline void aflag(bool b) {
+    if (b)
+      value_ |= AF;
+    else
+      value_ &= ~AF;
+  }
+  inline void zflag(bool b) {
+    if (b)
+      value_ |= CF;
+    else
+      value_ &= ~CF;
+  }
+  inline void sflag(bool b) {
+    if (b)
+      value_ |= SF;
+    else
+      value_ &= ~SF;
+  }
+  inline void tflag(bool b) {
+    if (b)
+      value_ |= TF;
+    else
+      value_ &= ~TF;
+  }
+  inline void iflag(bool b) {
+    if (b)
+      value_ |= IF;
+    else
+      value_ &= ~IF;
+  }
+  inline void dflag(bool b) {
+    if (b)
+      value_ |= DF;
+    else
+      value_ &= ~DF;
+  }
+  inline void oflag(bool b) {
+    if (b)
+      value_ |= OF;
+    else
+      value_ &= ~OF;
+  }
+
+  // bit 1 and 12-15 are always on
+  inline void reset() { value_ = 0xf002; } 
+  inline void set(uint16_t flg) { value_ |= flg; }
+  inline void clear(uint16_t flg) { value_ &= !flg; }
+  inline bool test(uint16_t flg) { return value_ & flg; }
+
+  uint16_t value_{0xf002};
 };
 
 class cpu_core {
@@ -200,7 +265,7 @@ public:
   regs_t  regs;
   sregs_t sregs;
   flags_t flags;
-  uint16_t ip;
+  uint16_t ip{0};
 };
 
 class CPU {

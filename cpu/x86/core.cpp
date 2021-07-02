@@ -69,13 +69,13 @@ void CPU::execute_0x0(const instruction_t& inst) {
   // 0x0A: OR r8, r/m8
   case 0xA: {
     const auto r = core.regs.h.get(inst.mdrm.reg);
-    auto rm = rmm8(inst, core, memory);
+    const auto rm = rmm8(inst, core, memory);
     core.regs.h.set(inst.mdrm.reg, r | rm.get());
   } break;
   // 0x0B: OR r16, r/m16
   case 0xB: {
     const auto r = core.regs.x.get(inst.mdrm.reg);
-    auto rm = rmm16(inst, core, memory);
+    const auto rm = rmm16(inst, core, memory);
     core.regs.x.set(inst.mdrm.reg,  r | rm.get());
   } break;
   // 0x0C: OR AL, imm8
@@ -112,25 +112,23 @@ void CPU::execute_0x2(const instruction_t& inst) {
 void CPU::execute_0x3(const instruction_t& inst) {
   switch (inst.op & 0x0f) {
   case 0x0: {
-    auto r = core.regs.h.get(inst.mdrm.reg);
+    const auto r = core.regs.h.get(inst.mdrm.reg);
     auto rm = rmm8(inst, core, memory);
-    const auto val = rm.get() ^ r;
-    rm.set(val);
+    rm ^= r;
   } break;
   case 0x1: {
-    auto r = core.regs.x.get(inst.mdrm.reg);
+    const auto r = core.regs.x.get(inst.mdrm.reg);
     auto rm = rmm16(inst, core, memory);
-    const auto val = rm.get() ^ r;
-    rm.set(val);
+    rm ^= r;
   } break;
   case 0x2: {
-    auto r = core.regs.h.get(inst.mdrm.reg);
-    auto rm = rmm8(inst, core, memory);
+    const auto r = core.regs.h.get(inst.mdrm.reg);
+    const auto rm = rmm8(inst, core, memory);
     core.regs.h.set(inst.mdrm.reg, r ^ rm.get());
   } break;
   case 0x3: {
-    auto r = core.regs.x.get(inst.mdrm.reg);
-    auto rm = rmm16(inst, core, memory);
+    const auto r = core.regs.x.get(inst.mdrm.reg);
+    const auto rm = rmm16(inst, core, memory);
     core.regs.x.set(inst.mdrm.reg, r ^ rm.get());
   } break;
   case 0x4: {
@@ -163,14 +161,13 @@ void CPU::execute_0x8(const instruction_t& inst) {
   // 83/0":"add r/m16/32, imm8
   case 0x3: {
     // only add if reg == 0
-    const auto& reg = inst.mdrm.reg;
-    switch (reg) {
+    switch (inst.mdrm.reg) {
     case 0x0: {
       auto regmem16 = rmm16(inst, core, memory);
       regmem16 += inst.operand8;
     } break;
     default: {
-      VLOG(1) << "Unhandled submode of 0x83: " << reg;
+      VLOG(1) << "Unhandled submode of 0x83: " << inst.mdrm.reg;
       auto regmem16 = rmm16(inst, core, memory);
       regmem16 += inst.operand8;
     } break;
@@ -201,31 +198,23 @@ void CPU::execute_0x9(const instruction_t& inst) {
 void CPU::execute_0xA(const instruction_t& inst) {
   switch (inst.op & 0x0f) {
   case 0x0: {
-    const auto seg_index =
-        inst.seg_override.value_or(default_segment_for_index(inst.mdrm.mod, inst.mdrm.rm));
-    const uint16_t seg = core.sregs.get(seg_index);
+    const auto seg = core.sregs.get(inst.seg_index());
     // offset is inst.operand16
     core.regs.h.al = memory.get<uint8_t>(seg, inst.operand8);
   } break;
   case 0x1: {
-    const auto seg_index =
-        inst.seg_override.value_or(default_segment_for_index(inst.mdrm.mod, inst.mdrm.rm));
-    const uint16_t seg = core.sregs.get(seg_index);
+    const auto seg = core.sregs.get(inst.seg_index());
     // offset is inst.operand16
     core.regs.x.ax = memory.get<uint16_t>(seg, inst.operand16);
   } break;
   case 0x2: {
-    const auto seg_index =
-        inst.seg_override.value_or(default_segment_for_index(inst.mdrm.mod, inst.mdrm.rm));
-    const uint16_t seg = core.sregs.get(seg_index);
+    const auto seg = core.sregs.get(inst.seg_index());
     // offset is inst.operand16
     memory.set<uint8_t>(seg, inst.operand8, core.regs.h.al);
   } break;
   //  mov [seg:off],ax
   case 0x3: {
-    const auto seg_index =
-        inst.seg_override.value_or(default_segment_for_index(inst.mdrm.mod, inst.mdrm.rm));
-    const uint16_t seg = core.sregs.get(seg_index);
+    const auto seg = core.sregs.get(inst.seg_index());
     // offset is inst.operand16
     memory.set<uint16_t>(seg, inst.operand16, core.regs.x.ax);
   } break;
@@ -255,9 +244,7 @@ void CPU::execute_0xC(const instruction_t& inst) {
   } break;
   // LES r16,m16:16 - Load ES:r16 with far pointer from memory.
   case 0x4: {
-    const segment_t senum =
-        inst.seg_override.value_or(default_segment_for_index(inst.mdrm.mod, inst.mdrm.rm));
-    const uint16_t seg = core.sregs.get(senum);
+    const auto seg = core.sregs.get(inst.seg_index());
     core.regs.x.set(inst.mdrm.reg, memory.get<uint16_t>(seg, inst.operand16));
     core.sregs.es = inst.mdrm.reg, memory.get<uint16_t>(seg, inst.operand16 + 2);
   } break;
@@ -268,9 +255,7 @@ void CPU::execute_0xC(const instruction_t& inst) {
   // MOV SI, [200h] and MOV DS, [202h]. The 8086 only supports loading the
   // pointer into the DS or ES segment register.
   case 0x5: {
-    const segment_t senum =
-        inst.seg_override.value_or(default_segment_for_index(inst.mdrm.mod, inst.mdrm.rm));
-    const uint16_t seg = core.sregs.get(senum);
+    const auto seg = core.sregs.get(inst.seg_index());
     core.regs.x.set(inst.mdrm.reg, memory.get<uint16_t>(seg, inst.operand16));
     core.sregs.ds = inst.mdrm.reg, memory.get<uint16_t>(seg, inst.operand16 + 2);
   }
@@ -311,7 +296,7 @@ void CPU::execute_0xF(const instruction_t& inst) {
   switch (inst.op & 0x0f) {
   // CLD: Clear directuon flag
   case 0xC: {
-    core.flags.clear(DF);
+    core.flags.dflag(false);
   } break;
   }
 }

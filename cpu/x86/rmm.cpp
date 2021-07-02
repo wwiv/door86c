@@ -16,17 +16,6 @@ uint16_t r16(const instruction_t& inst, cpu_core& core) {
   return core.regs.x.get(inst.mdrm.reg);
 }
 
-// Returns the default segment to use for an rm value of 0-7
-// per the Intel docs: The default segment register is SS for the effective addresses
-// containing a BP index, DS for other effective addresses.
-// check modd too (for modrm) since mod of 0 means there is no BP for #6
-segment_t default_segment_for_index(uint8_t mod, uint8_t rm) {
-  if (rm == 2 || rm == 3 || (rm == 6 && mod != 0)) {
-    return segment_t::SS;
-  }
-  return segment_t::DS;
-}
-
 // base without any displacement.
 static uint16_t base_ea(reg_mod_rm modrm, const cpu_core& core) {
   auto rm = modrm.rm;
@@ -72,9 +61,7 @@ Rmm<uint8_t> rmm8(const instruction_t& inst, cpu_core& core, Memory& mem) {
     return Rmm<uint8_t>(&core, core.regs.h.regptr(inst.mdrm.rm));
   }
   // Pick the overridden segment, or just the default one for the instruction.
-  const auto seg_index =
-      inst.seg_override.value_or(default_segment_for_index(inst.mdrm.mod, inst.mdrm.rm));
-  const uint16_t seg = core.sregs.get(seg_index);
+  const auto seg = core.sregs.get(inst.seg_index());
   if (inst.mdrm.mod == 0 && inst.mdrm.rm == 0x06) {
     const auto offset =
         inst.metadata.bits == 8 ? inst.operand8 : static_cast<uint8_t>(inst.operand16 & 0xff);
@@ -91,9 +78,7 @@ Rmm<uint16_t> rmm16(const instruction_t& inst, cpu_core& core, Memory& mem) {
     // in mod 3 don't ever use segment registers.
     return Rmm<uint16_t>(&core, core.regs.x.regptr(inst.mdrm.rm));
   }
-  const segment_t senum =
-      inst.seg_override.value_or(default_segment_for_index(inst.mdrm.mod, inst.mdrm.rm));
-  uint16_t seg = core.sregs.get(senum);
+  const auto seg = core.sregs.get(inst.seg_index());
   if (inst.mdrm.mod == 0 && inst.mdrm.rm == 0x06) {
     const auto offset = inst.metadata.bits == 8 ? inst.operand8 : inst.operand16;
     return Rmm<uint16_t>(&core, &mem, seg, offset);

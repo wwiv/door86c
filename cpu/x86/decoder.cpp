@@ -328,8 +328,19 @@ inline static bool has_modrm_operand8(const reg_mod_rm& r) {
   return r.rm == 0x01;
 }
 
-bool instruction_t::has_modrm() { 
+bool instruction_t::has_modrm() const{ 
   return door86::cpu::x86::has_modrm(metadata.mask);
+}
+
+static segment_t default_segment_for_index(uint8_t mod, uint8_t rm) {
+  if (rm == 2 || rm == 3 || (rm == 6 && mod != 0)) {
+    return segment_t::SS;
+  }
+  return segment_t::DS;
+}
+
+segment_t instruction_t::seg_index() const {
+  return seg_override.value_or(default_segment_for_index(mdrm.mod, mdrm.rm));
 }
 
 instruction_t Decoder::next_instruction(uint8_t* o) {

@@ -50,7 +50,9 @@ public:
   op_code_data_t metadata;
 
   // methods.
-  bool has_modrm();
+  bool has_modrm() const;
+  /** returns the overridden or default segment to use for this instrction */
+  segment_t seg_index() const;
 
   // prefix instructions
   std::optional<segment_t> seg_override;

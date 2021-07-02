@@ -47,38 +47,53 @@ public:
     }
   }
 
-  inline void set_flags(bigT& cur) {
+  inline T set_flags(bigT& cur) {
     if (cur & of_mask) {
       core_->flags.set(OF);
     }
     if (cur & cf_mask) {
       core_->flags.set(CF);
     }
-    cur = static_cast<T>(cur);
-    if ((kern_popcount(cur) % 2) == 0) {
+
+    T adj_cur = static_cast<T>(cur);
+    if ((kern_popcount(adj_cur) % 2) == 0) {
       core_->flags.set(PF);
     } else {
       core_->flags.clear(PF);
     }
-    if (cur == 0) {
+    if (adj_cur == 0) {
       core_->flags.set(ZF);
     } else {
       core_->flags.clear(ZF);
     }
+    return adj_cur;
   }
 
   inline Rmm& operator+=(const T& other) {
     bigT cur = get();
     cur += other;
-    set_flags(cur);
-    set(cur);
+    set(set_flags(cur));
     return *this;
   }
 
   inline Rmm& operator-=(const T& other) {
     bigT cur = get();
     cur -= other;
-    set_flags(cur);
+    set(set_flags(cur));
+    return *this;
+  }
+
+  inline Rmm& operator|=(const T& other) {
+    bigT cur = get();
+    cur |= other;
+    set(set_flags(cur));
+    return *this;
+  }
+
+  inline Rmm& operator^=(const T& other) {
+    bigT cur = get();
+    cur ^= other;
+    set(set_flags(cur));
     return *this;
   }
 
@@ -92,9 +107,7 @@ private:
 
 
 uint16_t r16(const instruction_t& inst, cpu_core& core);
-segment_t default_segment_for_index(uint8_t mod, uint8_t rm);
 uint16_t effective_address(const instruction_t& inst, const cpu_core& core);
-
 
 Rmm<uint8_t> rmm8(const instruction_t& inst, cpu_core& core, Memory& mem);
 Rmm<uint16_t> rmm16(const instruction_t& inst, cpu_core& core, Memory& mem);

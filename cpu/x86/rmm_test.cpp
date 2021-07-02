@@ -13,6 +13,11 @@ class RmmTest : public testing::Test {
 public:
   RmmTest() { }
 
+  Rmm<uint16_t> ax() { return Rmm<uint16_t>(&core, &core.regs.x.ax); };
+  Rmm<uint16_t> bx() { return Rmm<uint16_t>(&core, &core.regs.x.bx); };
+  Rmm<uint16_t> cx() { return Rmm<uint16_t>(&core, &core.regs.x.cx); };
+  Rmm<uint16_t> dx() { return Rmm<uint16_t>(&core, &core.regs.x.dx); };
+
   cpu_core core;
   Decoder decoder;
   Memory memory{1 << 20};
@@ -32,4 +37,22 @@ TEST_F(RmmTest, RegisterAccess) {
   ASSERT_EQ(0xCAFE, rmm.get());
 }
 
+TEST_F(RmmTest, Reg_CF) { 
+  EXPECT_FALSE(core.flags.cflag());
+  core.regs.x.cx = 0xffff;
+  auto r = cx(); 
+  r += 1;
+  EXPECT_EQ(0x0000, r.get());
+  EXPECT_TRUE(core.flags.cflag());
+  EXPECT_TRUE(core.flags.zflag());
+}
 
+TEST_F(RmmTest, Reg_ZF) {
+  EXPECT_FALSE(core.flags.cflag());
+  core.regs.x.cx = 0xffaa;
+  auto r = cx();
+  r -= 0xffaa;
+  EXPECT_EQ(0x0000, r.get());
+  EXPECT_FALSE(core.flags.cflag());
+  EXPECT_TRUE(core.flags.zflag());
+}
