@@ -188,8 +188,8 @@ public:
   bool cf() { return flag & CF; }
   // bit 1 and 12-15 are always on
   void reset() { flag = 0xf002;  } 
-  void set(uint16_t flg) { flag |= flg; }
-  void clear(uint16_t flg) { flag &= !flg; }
+  inline void set(uint16_t flg) { flag |= flg; }
+  inline void clear(uint16_t flg) { flag &= !flg; }
   bool test(uint16_t flg) { return flag & flg; }
 
   uint16_t flag;
@@ -208,6 +208,15 @@ public:
   CPU();
 
   // opcode executing
+  // TODO(rushfan): Rebucket these into the following
+  /** 
+    Opcodes in octal; groups/classes:
+    * 000-077: arith-logical operations: ADD, ADC,SUB, SBB,AND...
+      – 0P[0-7], where P in {0: add, 1: or, 2: adc, 3: sbb, 4: and, 5: sub, 6: xor, 7: cmp}
+    * 100-177: INC/PUSH/POP, Jcc,...
+    * 200-277: data movement: MOV,LODS,STOS,...
+    * 300-377: misc and escape groups  
+  */
 
   bool execute(uint16_t cs, uint16_t ip);
   // execute using existing cs:ip
@@ -252,39 +261,6 @@ private:
   bool running_{true};
 };
 
-template<typename T> class Rmm {
-public:
-  Rmm(T* reg) : mem_(nullptr), reg_(reg), seg_(0), off_(0) {}
-  Rmm(Memory* mem, uint16_t seg, uint16_t off) : mem_(mem), reg_(nullptr), seg_(seg), off_(off) {}
-
-  T get() const {
-    if (mem_) {
-      return mem_->get<T>(seg_, off_);
-    } 
-    return *reg_;
-  }
-
-  void set(T v) {
-    if (mem_) {
-      mem_->set<T>(seg_, off_, v);
-    } else {
-      *reg_ = v;
-    }
-  }
-
-  Rmm& operator+=(const T& other) { 
-    T cur = get();
-    cur += other;
-    set(cur);
-    return *this;
-  }
-
-private:
-  Memory* mem_;
-  T* reg_;
-  uint16_t seg_;
-  uint16_t off_;
-};
 
 }
 #endif

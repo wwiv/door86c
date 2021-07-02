@@ -1,4 +1,5 @@
 #include "cpu/x86/core.h"
+#include "cpu/x86/rmm.h"
 
 #include "core/log.h"
 #include "fmt/format.h"
@@ -9,14 +10,6 @@ namespace door86::cpu::x86 {
 
 CPU::CPU() : core(), decoder(), memory(1 << 20) {}
 
-// returns the register for an r16
-static uint16_t r16(const instruction_t& inst, cpu_core& core) { 
-  if (inst.metadata.mask & op_mask_reg_is_sreg) {
-    return core.sregs.get(inst.mdrm.reg);
-  }
-  return core.regs.x.get(inst.mdrm.reg);
-}
-
 // sets an r16 value (either reg or sreg depending on the instruction)
 static void r16(const instruction_t& inst, cpu_core& core, uint16_t value) { 
   if (inst.metadata.mask & op_mask_reg_is_sreg) {
@@ -25,112 +18,33 @@ static void r16(const instruction_t& inst, cpu_core& core, uint16_t value) {
   core.regs.x.set(inst.mdrm.reg, value);
 }
 
-// Returns the default segment to use for an rm value of 0-7
-// per the Intel docs: The default segment register is SS for the effective addresses 
-// containing a BP index, DS for other effective addresses.
-// check modd too (for modrm) since mod of 0 means there is no BP for #6
-segment_t default_segment_for_index(uint8_t mod, uint8_t rm) { 
-  if (rm == 2 || rm == 3 || (rm == 6 && mod != 0)) {
-    return segment_t::SS;
-  }
-  return segment_t::DS;
-}
-    // base without any displacement.
-uint16_t base_ea(reg_mod_rm modrm, const cpu_core& core) {
-  auto rm = modrm.rm;
-  switch (rm) {
-  case 0: return core.regs.x.bx + core.regs.x.si;
-  case 1: return core.regs.x.bx + core.regs.x.di;
-  case 2: return core.regs.x.bp + core.regs.x.si;
-  case 3: return core.regs.x.bp + core.regs.x.di;
-  case 4: return core.regs.x.si;
-  case 5: return core.regs.x.di;
-  case 6: return core.regs.x.bp;
-  case 7: return core.regs.x.bx;
-  }
-  // Todo(CHECK FAIL HERE?) gpf?
-  return 0;
-}
-
-// Returns the effective address offset (not segment) from the modrm byte
-// and following offset.
-static uint16_t effective_address(const instruction_t& inst, const cpu_core& core) {
-  if (inst.mdrm.mod == 0) {
-    const auto disp = inst.metadata.bits == 8 ? inst.operand8 : inst.operand16;
-    return disp;
-  } else if (inst.mdrm.mod == 3) {
-    // TODO(rushfan): Should we fail here?
-    LOG(WARNING) << "Whoops! Getting Effective Address for mod3??!?!?";
-    return 0;
-  } else {
-    // mod 1 and 2 adds a 8 or 16 bit dispacemnt
-    const auto base = base_ea(inst.mdrm, core);
-    const auto disp = inst.metadata.bits == 8 ? inst.operand8 : inst.operand16;
-    return base + disp;
-  }
-}
-
-// **** NOTE: Keep rmm8 and rmm16 in sync
-
-// returns the offset for the effective address described by a modrm byte
-// returns the rm portion for the modrm
-Rmm<uint8_t> rmm8(const instruction_t& inst, cpu_core& core, Memory& mem) {
-  // Pick the overridden segment, or just the default one for the instruction.
-  const auto seg_index =
-      inst.seg_override.value_or(default_segment_for_index(inst.mdrm.mod, inst.mdrm.rm));
-  const uint16_t seg = core.sregs.get(seg_index);
-  if (inst.mdrm.mod == 0x03) {
-    // mod 3 returns a reference to a CPU register
-    return Rmm<uint8_t>(core.regs.h.regptr(inst.mdrm.rm));
-  }
-  if (inst.mdrm.mod == 0 && inst.mdrm.rm == 0x06) {
-    const auto offset = inst.metadata.bits == 8 ? inst.operand8 : static_cast<uint8_t>(inst.operand16 & 0xff);
-    return Rmm<uint8_t>(&mem, seg, offset);
-  }
-  const auto offset = effective_address(inst, core);
-  return Rmm<uint8_t>(&mem, seg, offset);
-}
-
-Rmm<uint16_t> rmm16(const instruction_t& inst, cpu_core& core, Memory& mem) {
-  const segment_t senum =
-      inst.seg_override.value_or(default_segment_for_index(inst.mdrm.mod, inst.mdrm.rm));
-  uint16_t seg = core.sregs.get(senum);
-  if (inst.mdrm.mod == 0x03) {
-    // mod 3 returns a reference to a CPU register.
-    // don't ue r16 since that applies segment override, and ModR/M bytes
-    // in mod 3 don't ever use segment registers.
-    return Rmm<uint16_t>(core.regs.x.regptr(inst.mdrm.rm));
-  }
-  if (inst.mdrm.mod == 0 && inst.mdrm.rm == 0x06) {
-    const auto offset = inst.metadata.bits == 8 ? inst.operand8 : inst.operand16;
-    return Rmm<uint16_t>(&mem, seg, offset);
-  }
-  const auto offset = effective_address(inst, core);
-  return Rmm<uint16_t>(&mem, seg, offset);
-}
 
 // TODO(rushfan): Make generic way to set flags after operations
 // mostly add
 void CPU::execute_0x0(const instruction_t& inst) {
-  auto regmem16 = rmm16(inst, core, memory);
   switch (inst.op & 0x0f) {
-  // "00":"add r/m8, r8",
+  // "0x00":"add r/m8, r8",
   case 0x0: {
+    auto rm = rmm8(inst, core, memory);
     const auto reg8 = core.regs.h.get(inst.mdrm.reg);
-    regmem16 += reg8;
+    rm += reg8;
   } break;
-  // "01" : "add r/m16/32, r16/32",
-  case 0x1: regmem16 += r16(inst, core); break;
+  // "0x01" : "add r/m16/32, r16/32",
+  case 0x1: {
+    auto rm = rmm16(inst, core, memory);
+    rm += r16(inst, core);
+  } break;
   // 02/r":"add r8, r/m8
   case 0x2: {
     const auto reg8 = core.regs.h.get(inst.mdrm.reg);
-    const auto regmem8 = rmm8(inst, core, memory);
-    core.regs.h.set(inst.mdrm.reg, regmem8.get() + reg8);
+    const auto rm8 = rmm8(inst, core, memory);
+    core.regs.h.set(inst.mdrm.reg, rm8.get() + reg8);
   } break;
   // 03":"add r16/32, r/m16/32
   case 0x3: {
+    auto rm = rmm16(inst, core, memory);
     const auto reg16 = r16(inst, core);
-    r16(inst, core, reg16 + regmem16.get());
+    r16(inst, core, reg16 + rm.get());
   } break;
   // 04":"add al, imm8
   case 0x4: core.regs.h.al += inst.operand8; break;
@@ -140,11 +54,56 @@ void CPU::execute_0x0(const instruction_t& inst) {
   case 0x6: push(core.sregs.es); break;
   // 07 POP ES
   case 0x7: core.sregs.es = pop(); break;
+  // 0x08: OR r/m8, r8
+  case 0x8: {
+    const auto r = core.regs.h.get(inst.mdrm.reg);
+    auto rm = rmm8(inst, core, memory);
+    rm.set(rm.get() | r);
+  } break;
+  // 0x09: OR r/m16, r16
+  case 0x9: {
+    const auto r = core.regs.x.get(inst.mdrm.reg);
+    auto rm = rmm16(inst, core, memory);
+    rm.set(rm.get() | r);
+  } break;
+  // 0x0A: OR r8, r/m8
+  case 0xA: {
+    const auto r = core.regs.h.get(inst.mdrm.reg);
+    auto rm = rmm8(inst, core, memory);
+    core.regs.h.set(inst.mdrm.reg, r | rm.get());
+  } break;
+  // 0x0B: OR r16, r/m16
+  case 0xB: {
+    const auto r = core.regs.x.get(inst.mdrm.reg);
+    auto rm = rmm16(inst, core, memory);
+    core.regs.x.set(inst.mdrm.reg,  r | rm.get());
+  } break;
+  // 0x0C: OR AL, imm8
+  case 0xC: {
+    core.regs.h.al |= inst.operand8;
+  } break;
+  // 0x0D: OR AX, imm16
+  case 0xD: {
+    core.regs.x.ax |= inst.operand16;
+  } break;
+  // 0x0E: PUSH CS
+  case 0xE: push(core.sregs.cs); break;
+  // 0x0F: POP CS
+  case 0xF: core.sregs.cs = pop(); break;
   }
 }
 
 void CPU::execute_0x1(const instruction_t& inst) {
-  switch (inst.op & 0x0f) {}
+  switch (inst.op & 0x0f) {
+  // 0x16: PUSH SS
+  case 0x6: push(core.sregs.ss); break;
+  // 0x17: POP SS
+  case 0x7: core.sregs.ss = pop(); break;
+  // 0x1E: PUSH DS
+  case 0xE: push(core.sregs.ds); break;
+  // 0x1F: POP DS
+  case 0xF: core.sregs.ds = pop(); break;
+  }
 }
 void CPU::execute_0x2(const instruction_t& inst) {
   switch (inst.op & 0x0f) {}
@@ -441,15 +400,6 @@ uint16_t CPU::pop() {
   core.regs.x.sp += 2; 
   // TODO(rushfan): assert if sp >= 0xffff
   return m;
-}
-
-// https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetKernighan
-static int kern_popcount(int n) {
-  int c;
-  for (c = 0; n; ++c) {
-    n &= (n - 1);
-  }
-  return c;
 }
 
 // this is missing oac

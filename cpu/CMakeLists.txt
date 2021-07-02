@@ -11,8 +11,10 @@ add_library(cpu
   "memory.cpp"
   "x86/decoder.cpp"
   "x86/core.cpp"
+  "x86/rmm.cpp"
   )
 target_link_libraries(cpu PRIVATE fmt::fmt-header-only)
+# target_compile_options(cpu PUBLIC /FAcs)
 
 add_library(cpu_fixtures
   "x86/cpu_fixture.cpp"
@@ -36,3 +38,10 @@ add_executable(memory_tests
 )
 target_link_libraries(memory_tests cpu GTest::gtest_main)
 GTEST_DISCOVER_TESTS(memory_tests)
+
+add_executable(rmm_tests 
+ "x86/rmm_test.cpp"
+)
+target_link_libraries(rmm_tests cpu cpu_fixtures GTest::gtest_main)
+GTEST_DISCOVER_TESTS(rmm_tests)
+
