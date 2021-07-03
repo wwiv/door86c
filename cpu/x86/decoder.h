@@ -18,15 +18,23 @@ struct reg_mod_rm {
 };
 
 constexpr uint32_t op_mask_none = 0x00;
+// Has IMM or DISP or REL byte (8-bit)
 constexpr uint32_t op_mask_imm8 = 0x01;
+// Has IMM or DISP or REL byte (16-bit)
 constexpr uint32_t op_mask_imm16 = 0x02;
+// Has IMM or DISP or REL byte (32-bit)
 constexpr uint32_t op_mask_imm32 = 0x04;
 constexpr uint32_t op_mask_ext = 0x08;
+// Has ModRM byte (8-bit)
 constexpr uint32_t op_mask_modrm8 = 0x10;
+// Has ModRM byte (16-bit)
 constexpr uint32_t op_mask_modrm16 = 0x20;
+// Has ModRM byte (32-bit)
 constexpr uint32_t op_mask_modrm32 = 0x40;
-
+// Any register value refers to segment register not general register
 constexpr uint32_t op_mask_reg_is_sreg = 0x100;
+// uses a secondary opcode in the register
+constexpr uint32_t op_mask_so_opcode = 0x100;
 // this one is not yet implemented
 constexpr uint32_t op_mask_notimpl = 0x80000000;
 

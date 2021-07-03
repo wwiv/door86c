@@ -153,6 +153,57 @@ void CPU::execute_0x1(const instruction_t& inst) {
   case 0xE: push(core.sregs.ds); break;
   // 0x1F: POP DS
   case 0xF: core.sregs.ds = pop(); break;
+  
+  // 0x18: SBB r/m8	r8
+  case 0x8: {
+    auto rm = rmm8(inst);
+    rm -= r8(inst);
+    if (cf) {
+      rm -= 1;
+    }
+  } break;
+  // "0x19" : "SBB r/m16/32, r16/32",
+  case 0x9: {
+    auto rm = rmm16(inst);
+    rm -= r16(inst);
+    if (cf) {
+      rm -= 1;
+    }
+  } break;
+  // 0x1A":"SBB r8, r/m8
+  case 0xa: {
+    auto r = r8(inst);
+    const auto rm = rmm8(inst);
+    r -= rm;
+    if (cf) {
+      r -= 1;
+    }
+  } break;
+  // 1B":"SBB r16/32, r/m16/32
+  case 0xb: {
+    auto r = r16(inst);
+    auto rm = rmm16(inst);
+    r -= rm;
+    if (cf) {
+      r -= 1;
+    }
+  } break;
+  // 1C":"SBB al, imm8
+  case 0xc: {
+    auto r = r8(&core.regs.h.al);
+    r -= inst.operand8;
+    if (cf) {
+      r -= 1;
+    }
+  } break;
+  // 1D":"SBB ax, imm16/32
+  case 0xd: {
+    auto r = r16(&core.regs.x.ax);
+    r -= inst.operand16;
+    if (cf) {
+      r -= 1;
+    }
+  } break;
   }
 }
 void CPU::execute_0x2(const instruction_t& inst) {
@@ -189,6 +240,41 @@ void CPU::execute_0x2(const instruction_t& inst) {
     auto r = r16(&core.regs.x.ax);
     r &= inst.operand16;
   } break;
+
+  // 0x28: SUB r/m8, r8
+  case 0x8: {
+    const auto r = r8(inst);
+    auto rm = rmm8(inst);
+    rm -= r;
+  } break;
+  // 0xs9: SUB r/m16, r16
+  case 0x9: {
+    const auto r = core.regs.x.get(inst.mdrm.reg);
+    auto rm = rmm16(inst);
+    rm -= r;
+  } break;
+  // 0xsA: SUB r8, r/m8
+  case 0xA: {
+    auto r = r8(inst);
+    const auto rm = rmm8(inst);
+    r -= rm;
+  } break;
+  // 0xsB: SUB r16, r/m16
+  case 0xB: {
+    auto r = r16(inst);
+    const auto rm = rmm16(inst);
+    r -= rm;
+  } break;
+  // 0xsC: SUB AL, imm8
+  case 0xC: {
+    auto r = r8(&core.regs.h.al);
+    r -= inst.operand8;
+  } break;
+  // 0xsD: SUB AX, imm16
+  case 0xD: {
+    auto r = r16(&core.regs.x.ax);
+    r -= inst.operand16;
+  } break;
   }
 }
 
@@ -222,6 +308,40 @@ void CPU::execute_0x3(const instruction_t& inst) {
   case 0x5: {
     auto r = r16(&core.regs.x.ax);
     r ^= inst.operand16;
+  } break;
+  // 38 /r CMP r/m8, r8
+  case 0x8: {
+    auto rm = rmm8(inst);
+    const auto r = r8(inst);
+    rm.cmp(r);
+  } break;
+  // 39 /r CMP r/m16, r16
+  case 0x9: {
+    auto rm = rmm16(inst);
+    const auto r = r16(inst);
+    rm.cmp(r);
+  } break;
+  // 3A /r CMP r8, r/m8
+  case 0xA: {
+    auto r = r8(inst);
+    const auto rm = rmm8(inst);
+    r.cmp(rm);
+  } break;
+  // 3B /r CMP r16, r/m16
+  case 0xB: {
+    auto r = r16(inst);
+    const auto rm = rmm16(inst);
+    r.cmp(rm);
+  } break;
+  // 3C ib CMP AL, imm8
+  case 0xC: {
+    auto r = r8(&core.regs.h.al);
+    r.cmp(inst.operand8);
+  } break;
+  // 3D iw CMP AX, imm16
+  case 0xD: {
+    auto r = r16(&core.regs.x.ax);
+    r.cmp(inst.operand16);
   } break;
   }
 }
@@ -260,18 +380,178 @@ void CPU::execute_0x7(const instruction_t& inst) {
 
 void CPU::execute_0x8(const instruction_t& inst) {
   switch (inst.op & 0x0f) {
-  // 83/0":"add r/m16/32, imm8
+  case 0x0: {
+    switch (inst.mdrm.reg) {
+    // 80 /0 ib: ADD r/m8, imm8
+    case 0x0: {
+      auto rm = rmm8(inst);
+      rm += inst.operand8;
+    } break;
+    // 80 /1 ib: OR r/m8, imm8
+    case 0x1: {
+      auto rm = rmm8(inst);
+      rm |= inst.operand8;
+    } break;
+    // 80 /2 ib: ADS r/m8, imm8
+    case 0x2: {
+      const auto cf = core.flags.cflag();
+      auto rm = rmm8(inst);
+      rm += inst.operand8;
+      if (cf) {
+        rm += 1;
+      }
+    } break;
+    // 80 /3 ib: SBB r/m8, imm8
+    case 0x3: {
+      const auto cf = core.flags.cflag();
+      auto rm = rmm8(inst);
+      rm -= inst.operand8;
+      if (cf) {
+        rm -= 1;
+      }
+    } break;
+    // 80 /4 ib: AND r/m8, imm8
+    case 0x4: {
+      const auto cf = core.flags.cflag();
+      auto rm = rmm8(inst);
+      rm &= inst.operand8;
+    } break;
+    // 80 /5 ib: SUB r/m8, imm8
+    case 0x5: {
+      const auto cf = core.flags.cflag();
+      auto rm = rmm8(inst);
+      rm -= inst.operand8;
+    } break;
+    // 80 /6 ib: XOR r/m8, imm8
+    case 0x6: {
+      const auto cf = core.flags.cflag();
+      auto rm = rmm8(inst);
+      rm ^= inst.operand8;
+    } break;
+    // 80 /7 ib: CMP r/m8, imm8
+    case 0x7: {
+      auto rm = rmm8(inst);
+      rm.cmp(inst.operand8);
+    } break;
+    default: {
+      VLOG(1) << "Unhandled submode of 0x83: " << inst.mdrm.reg;
+    } break;
+    }
+  }
+  // 0x81
+  case 0x1: {
+    switch (inst.mdrm.reg) {
+    // 81 /0 iw: ADD r/m16, imm16
+    case 0x0: {
+      auto rm = rmm16(inst);
+      rm += inst.operand16;
+    } break;
+    // 81 /1 i2: OR r/m16, imm16
+    case 0x1: {
+      auto rm = rmm16(inst);
+      rm |= inst.operand16;
+    } break;
+    // 81 /2 iw: ADS r/m16, imm16
+    case 0x2: {
+      const auto cf = core.flags.cflag();
+      auto rm = rmm16(inst);
+      rm += inst.operand16;
+      if (cf) {
+        rm += 1;
+      }
+    } break;
+    // 81 /3 iw: SBB r/m16, imm16
+    case 0x3: {
+      const auto cf = core.flags.cflag();
+      auto rm = rmm16(inst);
+      rm -= inst.operand16;
+      if (cf) {
+        rm -= 1;
+      }
+    } break;
+    // 81 /4 iw: AND r/m16, imm16
+    case 0x4: {
+      const auto cf = core.flags.cflag();
+      auto rm = rmm16(inst);
+      rm &= inst.operand16;
+    } break;
+    // 81 /5 iw: SUB r/m16, imm16
+    case 0x5: {
+      const auto cf = core.flags.cflag();
+      auto rm = rmm16(inst);
+      rm -= inst.operand16;
+    } break;
+    // 81 /6 iw: XOR r/m16, imm16
+    case 0x6: {
+      const auto cf = core.flags.cflag();
+      auto rm = rmm16(inst);
+      rm ^= inst.operand16;
+    } break;
+    // 81 /7 iw: CMP r/m16, imm16
+    case 0x7: {
+      auto rm = rmm16(inst);
+      rm.cmp(inst.operand16);
+    } break;
+    default: {
+      VLOG(1) << "Unhandled submode of 0x83: " << inst.mdrm.reg;
+    } break;
+    }
+  } break; // 83/0":"add r/m16/32, imm8
   case 0x3: {
     // only add if reg == 0
     switch (inst.mdrm.reg) {
     case 0x0: {
       auto regmem16 = rmm16(inst);
-      regmem16 += inst.operand8;
+      regmem16 += static_cast<uint16_t>(inst.operand8);
+    } break;
+    // 83 /1 i2: OR r/m16, imm8
+    case 0x1: {
+      auto rm = rmm16(inst);
+      rm |= static_cast<uint16_t>(inst.operand8);
+    } break;
+    // 83 /2 iw: ADS r/m16, imm8
+    case 0x2: {
+      const auto cf = core.flags.cflag();
+      auto rm = rmm16(inst);
+      rm += static_cast<uint16_t>(inst.operand8);
+      if (cf) {
+        rm += 1;
+      }
+    } break;
+    // 83 /3 iw: SBB r/m16, imm8
+    case 0x3: {
+      const auto cf = core.flags.cflag();
+      auto rm = rmm16(inst);
+      rm -= static_cast<uint16_t>(inst.operand8);
+      if (cf) {
+        rm -= 1;
+      }
+    } break;
+    // 83 /4 iw: AND r/m16, imm8
+    case 0x4: {
+      const auto cf = core.flags.cflag();
+      auto rm = rmm16(inst);
+      rm &= static_cast<uint16_t>(inst.operand8);
+    } break;
+    // 83 /5 iw: SUB r/m16, imm8
+    case 0x5: {
+      const auto cf = core.flags.cflag();
+      auto rm = rmm16(inst);
+      rm -= static_cast<uint16_t>(inst.operand8);
+    } break;
+    // 83 /6 iw: XOR r/m16, imm8
+    case 0x6: {
+      const auto cf = core.flags.cflag();
+      auto rm = rmm16(inst);
+      rm ^= static_cast<uint16_t>(inst.operand8);
+    } break;
+    // 83 /7 iw: CMP r/m16, imm8
+    case 0x7: {
+      auto rm = rmm16(inst);
+      rm.cmp(static_cast<uint16_t>(inst.operand8));
     } break;
     default: {
       VLOG(1) << "Unhandled submode of 0x83: " << inst.mdrm.reg;
-      auto regmem16 = rmm16(inst);
-      regmem16 += inst.operand8;
     } break;
     }
   } break;
@@ -360,8 +640,17 @@ void CPU::execute_0xC(const instruction_t& inst) {
     const auto seg = core.sregs.get(inst.seg_index());
     core.regs.x.set(inst.mdrm.reg, memory.get<uint16_t>(seg, inst.operand16));
     core.sregs.ds = inst.mdrm.reg, memory.get<uint16_t>(seg, inst.operand16 + 2);
-  }
-    break;
+  } break;
+  // MOV r/m8, imm8
+  case 0x6: {
+    auto rm = rmm8(inst);
+    rm.set(inst.operand8);
+  } break;
+  // MOV r/m16, imm16
+  case 0x7: {
+    auto rm = rmm16(inst);
+    rm.set(inst.operand16);
+  } break;
   // RET (far call and clear some bytes of stack)
   case 0xA: {
     core.ip = pop();
@@ -391,6 +680,14 @@ void CPU::execute_0xE(const instruction_t& inst) {
     push(core.ip);
     core.ip += inst.operand16;
   } break;
+  // JMP rel16
+  case 0x9: {
+    core.ip += inst.operand16;
+  } break;
+  // JMP rel8
+  case 0xB: {
+    core.ip += inst.operand8;
+  } break;
   }
 }
 
@@ -399,6 +696,55 @@ void CPU::execute_0xF(const instruction_t& inst) {
   // CLD: Clear directuon flag
   case 0xC: {
     core.flags.dflag(false);
+  } break;
+  // INC or DEC r/m8
+  case 0xE: {
+    switch (inst.mdrm.reg) {
+    case 0: { // INC
+      auto r = rmm8(inst);
+      r += 1;
+    } break;
+    case 1: { // DEC
+      auto r = rmm8(inst);
+      r -= 1;
+    } break;
+    default: {
+      LOG(WARNING) << "Unhandled subcode of opcode: 0xFE; subcode: " << inst.mdrm.reg;
+    } break;
+    }
+  } break;
+  // INC r/m16
+  case 0xF: {
+    switch (inst.mdrm.reg) {
+    case 0: { // INC
+      auto r = rmm16(inst);
+      r += 1;
+    } break;
+    case 1: { // DEC
+      auto r = rmm16(inst);
+      r -= 1;
+    } break;
+    case 2: { // CALL
+      // push the next IP onto the stack then jump ahead by the specified offset.
+      push(core.ip);
+      core.ip = inst.operand16;
+    } break;
+    // JMP r/m16
+    case 4: {
+      core.ip = inst.operand16;
+    } break;
+    // 5: JMP m16:16
+    // TODO(rushfan): Need an example of this.
+    //case 5: {
+    //  const auto current_seg = core.sregs.get(inst.seg_index());
+    //  const auto offset = memory.get<uint16_t>(seg, inst.operand16);
+    //  const auto seg = memory.get<uint16_t>(seg, inst.operand16 + 2);
+    //  core.ip = inst.operand16;
+    //} break;
+    default: {
+      LOG(WARNING) << "Unhandled subcode of opcode: 0xFF; subcode: " << inst.mdrm.reg;
+    } break;
+    }
   } break;
   }
 }
@@ -442,6 +788,11 @@ bool CPU::execute() {
     auto inst = decoder.next_instruction(&memory[pos]);
     VLOG(2) << "fetched inst of bytes " << inst.len;
     core.ip += inst.len;
+
+    if (inst.metadata.mask & op_mask_notimpl) {
+      LOG(WARNING) << "Unimplemented Opcode Encountered: " << std::hex << static_cast<uint16_t>(inst.op);
+      continue;
+    }
     const auto family = inst.op >> 4;
     switch (family) {
     case 0x0: execute_0x0(inst); break;
@@ -453,13 +804,13 @@ bool CPU::execute() {
     case 0x6: execute_0x6(inst); break;
     case 0x7: execute_0x7(inst); break;
     case 0x8: execute_0x8(inst); break;
-    case 0x9: execute_0x0(inst); break;
-    case 0xA: execute_0x0(inst); break;
+    case 0x9: execute_0x9(inst); break;
+    case 0xA: execute_0xA(inst); break;
     case 0xB: execute_0xB(inst); break;
     case 0xC: execute_0xC(inst); break;
-    case 0xD: execute_0xC(inst); break;
-    case 0xE: execute_0xC(inst); break;
-    case 0xF: execute_0xC(inst); break;
+    case 0xD: execute_0xD(inst); break;
+    case 0xE: execute_0xE(inst); break;
+    case 0xF: execute_0xF(inst); break;
     }
     if (VLOG_IS_ON(1)) {
       const auto dispname =

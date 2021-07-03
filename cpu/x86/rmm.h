@@ -89,15 +89,9 @@ public:
     return *this;
   }
 
-  inline Rmm& operator+=(const Rmm<RmmType::MEMORY, T>& other) {
-    return operator+=(other.get());
-  }
-  inline Rmm& operator+=(const Rmm<RmmType::REGISTER, T>& other) {
-    return operator+=(other.get());
-  }
-  inline Rmm& operator+=(const Rmm<RmmType::EITHER, T>& other) {
-    return operator+=(other.get());
-  }
+  inline Rmm& operator+=(const Rmm<RmmType::MEMORY, T>& other) { return operator+=(other.get()); }
+  inline Rmm& operator+=(const Rmm<RmmType::REGISTER, T>& other) { return operator+=(other.get()); }
+  inline Rmm& operator+=(const Rmm<RmmType::EITHER, T>& other) { return operator+=(other.get()); }
 
   inline Rmm& operator-=(const T& other) {
     bigT cur = get();
@@ -106,7 +100,28 @@ public:
     return *this;
   }
 
-  inline Rmm& operator-=(const Rmm<R, T>& other) { return operator-=(other.get()); }
+  inline Rmm& operator-=(const Rmm<RmmType::MEMORY, T>& other) { return operator-=(other.get()); }
+  inline Rmm& operator-=(const Rmm<RmmType::REGISTER, T>& other) { return operator-=(other.get()); }
+  inline Rmm& operator-=(const Rmm<RmmType::EITHER, T>& other) { return operator-=(other.get()); }
+
+  void cmp(const T& other) {
+    // Compares the first source operand with the second source operand and sets
+    // the status flags in the EFLAGS register according to the results. 
+    // 
+    // The comparison is performed by subtracting the second operand from the
+    // firstoperand and then setting the status flags in the same manner as
+    // the SUB instruction.  When an immediate value is used as an operand, 
+    // it is sign-extended to the length of the first operand.
+    T saved = get();
+    bigT cur = saved;
+    cur -= other;
+    set_flags_from_bigt(cur);
+  }
+
+  inline void cmp(const Rmm<RmmType::MEMORY, T>& other) { return cmp(other.get()); }
+  inline void cmp(const Rmm<RmmType::REGISTER, T>& other) { return cmp(other.get()); }
+  inline void cmp(const Rmm<RmmType::EITHER, T>& other) { return cmp(other.get()); }
+
 
   inline Rmm& operator|=(const T& other) {
     T cur = get();

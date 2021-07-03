@@ -1,6 +1,7 @@
 #ifndef INCLUDED_CPU_X86_REGS_H
 #define INCLUDED_CPU_X86_REGS_H
 
+#include "core/log.h"
 #include "cpu/memory.h"
 #include "cpu/x86/decoder.h"
 #include <cstdint>
@@ -31,9 +32,9 @@ struct regs16 {
     case 5: return bp;
     case 6: return si;
     case 7: return di;
+    default: LOG(FATAL) << "Invalid reg number encountered: " << n;
     }
-    // TODO(rushfan): GPF? Crash? What?
-    return ax;
+    return 0;
   }
 
   uint16_t* regptr(int n) {
@@ -46,8 +47,8 @@ struct regs16 {
     case 5: return &bp;
     case 6: return &si;
     case 7: return &di;
+    default: LOG(FATAL) << "Invalid reg number encountered: " << n;
     }
-    // TODO(rushfan): GPF? Crash? What?
     return nullptr;
   }
 
@@ -61,6 +62,7 @@ struct regs16 {
     case 5: bp = val; break;
     case 6: si = val; break;
     case 7: di = val; break;
+    default: LOG(FATAL) << "Invalid reg number encountered: " << n;
     }
   }
 };
@@ -81,8 +83,8 @@ struct regs8 {
     case 5: return ch;
     case 6: return dh;
     case 7: return bh;
+    default: LOG(FATAL) << "Invalid reg number encountered: " << n;
     }
-    // TODO(rushfan): GPF? Crash? What?
     return al;
   }
 
@@ -96,6 +98,7 @@ struct regs8 {
     case 5: ch = val; break;
     case 6: dh = val; break;
     case 7: bh = val; break;
+    default: LOG(FATAL) << "Invalid reg number encountered: " << n;
     }
   }
 
@@ -109,8 +112,8 @@ struct regs8 {
     case 5: return &ch;
     case 6: return &dh;
     case 7: return &bh;
+    default: LOG(FATAL) << "Invalid reg number encountered: " << n;
     }
-    // TODO(rushfan): GPF? Crash? What?
     return &al;
   }
 };
@@ -136,8 +139,8 @@ struct sregs_t {
     case 3: return ds;
     case 4: return fs;
     case 5: return gs;
+    default: LOG(FATAL) << "Invalid reg number encountered: " << n;
     }
-    // TODO(rushfan): GPF? Crash? What?
     return es;
   }
 
@@ -149,8 +152,8 @@ struct sregs_t {
     case 3: ds = value; break;
     case 4: fs = value; break;
     case 5: gs = value; break;
+    default: LOG(FATAL) << "Invalid reg number encountered: " << n;
     }
-    // TODO(rushfan): GPF? Crash? What?
   }
 
   uint16_t get(segment_t n) { return get(static_cast<int>(n)); }
@@ -163,6 +166,7 @@ struct sregs_t {
     case 3: return &ds;
     case 4: return &fs;
     case 5: return &gs;
+    default: LOG(FATAL) << "Invalid reg number encountered: " << n;
     }
     return nullptr;
   }
