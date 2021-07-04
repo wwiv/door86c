@@ -20,7 +20,7 @@ Memory::~Memory() {
   mem_ = nullptr;
 }
 
-bool Memory::load_image(size_t start, size_t size, uint8_t* image) {
+bool Memory::load_image(size_t start, size_t size, const uint8_t* image) {
   if (size_ - start < size) {
     // We can't load the image, too big to fit.
     return false;
@@ -29,8 +29,27 @@ bool Memory::load_image(size_t start, size_t size, uint8_t* image) {
   return true;
 }
 
-bool Memory::load_image(const seg_address_t& start, size_t size, uint8_t* image) {
+bool Memory::load_image(const seg_address_t& start, size_t size, const uint8_t* image) {
   return load_image(abs_memory(start), size, image);
+}
+
+// loads an image of size (size) into memory starting at absolute location start
+bool Memory::load_string(size_t start, const std::string& s) {
+  if (size_ - start < s.size()) {
+    // We can't load the image, too big to fit.
+    return false;
+  }
+  return load_image(start, s.size(), reinterpret_cast<const uint8_t*>(s.data()));
+}
+
+// clears (zeros) a block of memory
+bool Memory::clear(size_t start, size_t size) {
+  if (size_ - start < size) {
+    // We can't load the image, too big to fit.
+    return false;
+  }
+  memset(mem_ + start, 0, size);
+  return true;
 }
 
 // returns value from an absolute memory location

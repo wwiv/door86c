@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
 
   cpu.core.regs.x.ax = 2; // drive C
   const auto start = std::chrono::system_clock::now();
-  bool result = cpu.execute();
+  bool result = cpu.run();
   const auto end = std::chrono::system_clock::now();
   auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
   auto us = std::chrono::duration_cast<std::chrono::microseconds>(end - start);

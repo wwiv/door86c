@@ -8,7 +8,8 @@
 namespace door86::cpu::x86 {
 
 std::vector<op_code_data_t> create_opcode_metadata() {
-  return {// First Octet
+  std::vector<op_code_data_t> v{
+      // First Octet
           {0x00, op_mask_modrm8, "ADD"},
           {0x01, op_mask_modrm16, "ADD"},
           {0x02, op_mask_modrm8, "ADD"},
@@ -112,8 +113,8 @@ std::vector<op_code_data_t> create_opcode_metadata() {
           {0x5e, op_mask_none, "POP"},
           {0x5f, op_mask_none, "POP"},
 
-          {0x60, op_mask_notimpl, "PUSHA"},
-          {0x61, op_mask_notimpl, "POPA"},
+          {0x60, op_mask_none, "PUSHA"},
+          {0x61, op_mask_none, "POPA"},
           {0x62, op_mask_notimpl, ""},
           {0x63, op_mask_notimpl, ""},
           {0x64, op_mask_notimpl, ""},
@@ -146,8 +147,8 @@ std::vector<op_code_data_t> create_opcode_metadata() {
           {0x7e, op_mask_notimpl, ""},
           {0x7f, op_mask_notimpl, ""},
 
-          {0x80, op_mask_notimpl | op_mask_imm8, "0x80/M"},
-          {0x81, op_mask_notimpl | op_mask_imm16, "0x81/M"},
+          {0x80, op_mask_none | op_mask_imm8, "0x80/M"},
+          {0x81, op_mask_none | op_mask_imm16, "0x81/M"},
           {0x82, op_mask_notimpl | op_mask_modrm8, ""},
           {0x83, op_mask_modrm16 | op_mask_imm8, "0x83/M"},
           {0x84, op_mask_notimpl | op_mask_modrm8, ""},
@@ -196,8 +197,8 @@ std::vector<op_code_data_t> create_opcode_metadata() {
           {0xAb, op_mask_notimpl, ""},
           {0xAc, op_mask_notimpl, ""},
           {0xAd, op_mask_notimpl, ""},
-          {0xAe, op_mask_notimpl, ""},
-          {0xAf, op_mask_notimpl, ""},
+          {0xAE, op_mask_none, "SCAS", 8},
+          {0xAF, op_mask_none, "SCAS", 16},
 
           // MOV with operand encoded in instruction
           {0xB0, op_mask_imm8, "MOV"},
@@ -282,9 +283,14 @@ std::vector<op_code_data_t> create_opcode_metadata() {
           {0xFa, op_mask_notimpl, ""},
           {0xFb, op_mask_notimpl, ""},
           {0xFC, op_mask_none, "CLD"},
-          {0xFd, op_mask_notimpl, ""},
+          {0xFD, op_mask_none, "STD"},
           {0xFE, op_mask_modrm8, "INC"},
-          {0xFF, op_mask_modrm16, "0xFF/M"}};
+          {0xFF, op_mask_modrm16, "0xFF/M"}
+};
+
+  v.at(0xAE).uses_rep_zf = true;
+  v.at(0xAF).uses_rep_zf = true;
+  return v;
 }
 
 /*
@@ -337,7 +343,9 @@ segment_t instruction_t::seg_index() const {
   return seg_override.value_or(default_segment_for_index(mdrm.mod, mdrm.rm));
 }
 
-instruction_t Decoder::next_instruction(uint8_t* o) {
+instruction_t Decoder::decode(const std::vector<uint8_t> o) { return decode(o.data()); }
+
+instruction_t Decoder::decode(const uint8_t* o) {
   instruction_t i;
   // TODO(rushfan): add in prefix bytes here.
   const auto first_byte = *o++;

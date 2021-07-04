@@ -3,7 +3,7 @@
 
 #include "cpu/memory_bits.h"
 #include <cstdint>
-
+#include <string>
 
 namespace door86::cpu {
 
@@ -53,9 +53,16 @@ public:
   }
 
   // loads an image of size (size) into memory starting at absolute location start
-  bool load_image(size_t start, size_t size, uint8_t* image);
+  bool load_image(size_t start, size_t size, const uint8_t* image);
   // loads an image of size (size) into memory starting at segmented location start
-  bool load_image(const seg_address_t& start, size_t size, uint8_t* image);
+  bool load_image(const seg_address_t& start, size_t size, const uint8_t* image);
+
+  // Helpers for testing
+
+  // loads an image of size (size) into memory starting at absolute location start
+  bool load_string(size_t start, const std::string& s);
+  // clears (zeros) a block of memory
+  bool clear(size_t start, size_t size);
 
 private:
   const int size_;

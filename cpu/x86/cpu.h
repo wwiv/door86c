@@ -28,10 +28,12 @@ public:
     * 200-277: data movement: MOV,LODS,STOS,...
     * 300-377: misc and escape groups  
   */
-
-  bool execute(uint16_t cs, uint16_t ip);
+  
+  // set cs:ip then execute
+  bool run(uint16_t cs, uint16_t ip);
   // execute using existing cs:ip
-  bool execute();
+  bool run();
+  bool execute(const instruction_t& inst);
   void execute_0x0(const instruction_t& inst);
   void execute_0x1(const instruction_t& inst);
   void execute_0x2(const instruction_t& inst);
@@ -48,6 +50,14 @@ public:
   void execute_0xD(const instruction_t& inst);
   void execute_0xE(const instruction_t& inst);
   void execute_0xF(const instruction_t& inst);
+
+  // handle rep and repne
+  void rep(const instruction_t& inst);
+
+  // These are useful when handling rep and repne
+  // individual instructuctions not handled in execute_0xX loop.
+  void scas_m8(const instruction_t& inst);
+  void scas_m16(const instruction_t& inst);
 
   // stack handling
 
@@ -84,4 +94,5 @@ private:
 
 
 }
+
 #endif

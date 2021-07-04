@@ -6,7 +6,36 @@
 #include "cpu/x86/cpu_fixture.h"
 #include <iostream>
 
+using namespace door86::cpu;
 using namespace door86::cpu::x86;
+
+class CPUTest : public testing::Test {
+public:
+  CPUTest() {}
+
+  bool load(uint16_t seg, const std::vector<uint8_t>& ops) {
+    const seg_address_t addr{seg, 0x0};
+    return c.memory.load_image(seg, ops.size(), ops.data());
+  }
+
+  bool load(uint16_t seg, const std::string& s) {
+    const seg_address_t addr{seg, 0x0};
+    const auto ops = parse_opcodes_from_line(s);
+    return c.memory.load_image(seg, ops.size(), ops.data());
+  }
+
+  bool load_string(uint16_t seg, const std::string& s) {
+    const seg_address_t addr{seg, 0x0};
+    return c.memory.load_string(seg * 0x10, s);
+  }
+
+  CPU c;
+  Decoder decoder;
+  Memory& mem{c.memory};
+  regs_t& regs{c.core.regs};
+  sregs_t& sregs{c.core.sregs};
+  flags_t& flags{c.core.flags};
+};
 
 /*
 00000000  B80100            mov ax,0x1
@@ -25,7 +54,7 @@ using namespace door86::cpu::x86;
 0000001B  657265            gs jc 0x83
 0000001E  2E0D0A24          cs or ax,0x240a 
  */
-TEST(CPUTest, Smoke) { 
+TEST_F(CPUTest, Smoke) { 
   const auto len = 34;
   std::string ops("\xB8\x01\x00\x8E\xD8\xB4\x09\x8D"
                   "\x16\x02\x00\xCD\x21\xB4\x4C\xCD"
@@ -33,14 +62,13 @@ TEST(CPUTest, Smoke) {
                   "\x20\x74\x68\x65\x72\x65\x2E\x0D"
                   "\x0A\x24", len);
   
-  CPU c;
   // load at 0 since there is no fixups like DOS does when loading the image.
   ASSERT_TRUE(c.memory.load_image(0x0, len, reinterpret_cast<uint8_t*>(ops.data())));
-  EXPECT_TRUE(c.execute(0, 0x0));
+  EXPECT_TRUE(c.run(0, 0x0));
 }
 
 
-TEST(CPUTest, HelloThere1) {
+TEST_F(CPUTest, HelloThere1) {
   constexpr char* s = R"(
 00000030  B8 02 00 8E D8 B4 09 BB 10 00 83 C3 01 83 C3 01   ................
 00000040  83 C3 01 83 C3 01 8D 16 00 00 CD 21 B4 4C CD 21   ...........!.L.!
@@ -48,10 +76,9 @@ TEST(CPUTest, HelloThere1) {
 )";
   auto ops = parse_opcodes_from_textdump(s); 
 
-  CPU c;
   // load at 0 since there is no fixups like DOS does when loading the image.
   ASSERT_TRUE(c.memory.load_image(0x0, ops.size(), ops.data()));
-  EXPECT_TRUE(c.execute(0, 0x0));
+  EXPECT_TRUE(c.run(0, 0x0));
 }
 
 TEST(CpuFixtureTest, Dump) { 
@@ -69,11 +96,29 @@ TEST(CpuFixtureTest, Dump) {
                        0x74, 0x68, 0x65, 0x72, 0x65, 0x2E, 0x0D, 0x0A, 0x24));
 }
 
-TEST(CPUTest, Mov) {
-  //B8FECA
+// Start tests for OPcodes here.
+
+TEST_F(CPUTest, Mov) {
   auto ops = parse_opcodes_from_line("B8FECA");
-  CPU c;
-  ASSERT_TRUE(c.memory.load_image(0x0, ops.size(), ops.data()));
-  EXPECT_TRUE(c.execute(0, 0x0));
+  sregs.cs = 0;
+  c.core.ip = 0;
+  // execute single instruction.
+  const auto inst = c.decoder.decode(ops);
+  EXPECT_TRUE(c.execute(inst));
   EXPECT_EQ(0xCAFE, c.core.regs.x.ax);
+  EXPECT_EQ(0xCAFE, regs.x.ax);
+}
+
+TEST_F(CPUTest, REPNE_SCAS) {
+  sregs.es = 0x2000;
+  regs.x.di = 0;
+  mem.clear(0x20000, 100);
+  mem.load_string(0x20000, "Hello World");
+  const auto ops = parse_opcodes_from_line("F3 AE");
+  const auto inst = c.decoder.decode(ops);
+  regs.x.ax = 0x0000;
+  regs.x.cx = 0xffff;
+  auto r = c.execute(inst);
+  regs.x.cx = ~regs.x.cx;
+  EXPECT_EQ(12, regs.x.cx);
 }

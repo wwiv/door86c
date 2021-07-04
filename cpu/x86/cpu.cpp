@@ -371,7 +371,30 @@ void CPU::execute_0x5(const instruction_t& inst) {
 }
 
 void CPU::execute_0x6(const instruction_t& inst) {
-  switch (inst.op & 0x0f) {}
+  switch (inst.op & 0x0f) {
+  // PUSHA
+  case 0x0: {
+    push(core.regs.x.ax);
+    push(core.regs.x.cx);
+    push(core.regs.x.dx);
+    push(core.regs.x.bx);
+    push(core.regs.x.sp);
+    push(core.regs.x.bp);
+    push(core.regs.x.si);
+    push(core.regs.x.di);
+  } break;
+  // POPA
+  case 0x1: {
+    core.regs.x.di = pop();
+    core.regs.x.si = pop();
+    core.regs.x.bp = pop();
+    core.regs.x.sp = pop();
+    core.regs.x.bx = pop();
+    core.regs.x.dx = pop();
+    core.regs.x.cx = pop();
+    core.regs.x.ax = pop();
+  } break;
+  }
 }
 
 void CPU::execute_0x7(const instruction_t& inst) {
@@ -577,6 +600,22 @@ void CPU::execute_0x9(const instruction_t& inst) {
   switch (inst.op & 0x0f) {}
 }
 
+void CPU::scas_m8(const instruction_t& inst) {
+  const int16_t step = core.flags.dflag() ? -1 : 1;
+  const auto b = memory.get<uint8_t>(core.sregs.es, core.regs.x.di);
+  auto r = r8(&core.regs.h.ah);
+  r.cmp(b);
+  core.regs.x.di += step;
+}
+
+void CPU::scas_m16(const instruction_t& inst) {
+  const int16_t step = core.flags.dflag() ? -1 : 1;
+  const auto b = memory.get<uint16_t>(core.sregs.es, core.regs.x.di);
+  auto r = r16(&core.regs.x.ax);
+  r.cmp(b);
+  core.regs.x.di += step;
+}
+
 void CPU::execute_0xA(const instruction_t& inst) {
   switch (inst.op & 0x0f) {
   case 0x0: {
@@ -599,6 +638,14 @@ void CPU::execute_0xA(const instruction_t& inst) {
     const auto seg = core.sregs.get(inst.seg_index());
     // offset is inst.operand16
     memory.set<uint16_t>(seg, inst.operand16, core.regs.x.ax);
+  } break;
+  // SCAS m8
+  case 0xE: {
+    scas_m8(inst);
+  } break;
+  // SCAS m16
+  case 0xF: {
+    scas_m16(inst);
   } break;
   }
 }
@@ -697,6 +744,10 @@ void CPU::execute_0xF(const instruction_t& inst) {
   case 0xC: {
     core.flags.dflag(false);
   } break;
+  // STD—Set Direction Flag
+  case 0xD: {
+    core.flags.dflag(true);
+  } break;
   // INC or DEC r/m8
   case 0xE: {
     switch (inst.mdrm.reg) {
@@ -775,26 +826,32 @@ void CPU::call_interrupt(int num) {
   }
 }
 
-bool CPU::execute(uint16_t start_cs, uint16_t start_ip) {
+bool CPU::run(uint16_t start_cs, uint16_t start_ip) {
   core.sregs.cs = start_cs;
   core.ip = start_ip;
-  return execute();
+  return run();
 }
 
-bool CPU::execute() {
+bool CPU::run() {
   while (running_) {
     VLOG(2) << "ip: " << core.ip;
-    int pos = (core.sregs.cs * 0x10) + core.ip;
-    auto inst = decoder.next_instruction(&memory[pos]);
+    const int pos = (core.sregs.cs * 0x10) + core.ip;
+    const auto inst = decoder.decode(&memory[pos]);
     VLOG(2) << "fetched inst of bytes " << inst.len;
     core.ip += inst.len;
+    execute(inst);
+  }
+  return true;
+}
 
-    if (inst.metadata.mask & op_mask_notimpl) {
-      LOG(WARNING) << "Unimplemented Opcode Encountered: " << std::hex << static_cast<uint16_t>(inst.op);
-      continue;
-    }
-    const auto family = inst.op >> 4;
-    switch (family) {
+bool CPU::execute(const instruction_t& inst) {
+  if (inst.metadata.mask & op_mask_notimpl) {
+    LOG(WARNING) << "Unimplemented Opcode Encountered: " << std::hex << static_cast<uint16_t>(inst.op);
+    return false;
+  }
+  bool done = true;
+  do {
+    switch (inst.op >> 4) {
     case 0x0: execute_0x0(inst); break;
     case 0x1: execute_0x1(inst); break;
     case 0x2: execute_0x2(inst); break;
@@ -812,14 +869,32 @@ bool CPU::execute() {
     case 0xE: execute_0xE(inst); break;
     case 0xF: execute_0xF(inst); break;
     }
-    if (VLOG_IS_ON(1)) {
-      const auto dispname =
-          (inst.metadata.name.empty() ? fmt::format("[{:2X}]", inst.op) : inst.metadata.name);
-      if (inst.metadata.name.empty()) {
-        LOG(INFO) << "** Unhandled Instruction: " << dispname;
-      } else {
-        VLOG(1) << "Instruction: " << dispname;
+    if (inst.rep) {
+      done = false;
+      if (--core.regs.x.cx == 0) {
+        done = true;
+        break;
       }
+      if (inst.metadata.uses_rep_zf) {
+        done = core.flags.zflag();    
+      }
+    } else if (inst.repne) {
+      if (--core.regs.x.cx == 0) {
+        done = true;
+        break;
+      }
+      if (inst.metadata.uses_rep_zf) {
+        done = !core.flags.zflag();
+      }
+    }
+  } while (!done);
+  if (VLOG_IS_ON(1)) {
+    const auto dispname =
+        (inst.metadata.name.empty() ? fmt::format("[{:2X}]", inst.op) : inst.metadata.name);
+    if (inst.metadata.name.empty()) {
+      LOG(INFO) << "** Unhandled Instruction: " << dispname;
+    } else {
+      VLOG(1) << "Instruction: " << dispname;
     }
   }
   return true;
@@ -910,6 +985,37 @@ Rmm<RmmType::REGISTER, uint8_t> CPU::r8(uint8_t* reg) {
 
 Rmm<RmmType::REGISTER, uint16_t> CPU::r16(uint16_t* reg) {
   return Rmm<RmmType::REGISTER, uint16_t>(&core, reg);
+}
+
+
+// REPEAT SUPPORT
+
+void CPU::rep(const instruction_t& inst) {
+  if (!inst.rep && !inst.repne) {
+    LOG(WARNING) << "Called CPU::rep without a REP or REPNE prefix";
+    return;
+  }
+  if (inst.rep && inst.repne) {
+    LOG(WARNING) << "Called CPU::rep with *BOTH* a REP or REPNE prefix";
+    return;
+  }
+
+  switch (inst.op) {
+  // SCASB
+  case 0xAE: {
+    for (; core.flags.zflag() == inst.repne && core.regs.x.cx; --core.regs.x.cx) {
+      scas_m8(inst);
+    }
+  } break;
+  case 0xAF: {
+    for (; core.flags.zflag() == inst.repne && core.regs.x.cx; --core.regs.x.cx) {
+      scas_m16(inst);
+    }
+  } break;
+  default: {
+    LOG(WARNING) << "Unhandled REP opcode: " << std::hex << inst.op;
+  } break;
+  }
 }
 
 

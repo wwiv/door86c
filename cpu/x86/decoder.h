@@ -46,6 +46,11 @@ struct op_code_data_t {
   std::string name;
   int bits{16}; // 8, 16, etc/
   op_enc_t op_enc{op_enc_t::rm_r};
+
+  // Other bits to set manually.
+
+  //  Does this instruction use thr ZF flag to terminate a REP/REPNE?
+  bool uses_rep_zf{false};
 };
 
 class instruction_t {
@@ -87,7 +92,9 @@ public:
   ~Decoder() = default;
 
   /** Fetches the next instruction from the bytestream at o */
-  instruction_t next_instruction(uint8_t* o);
+  instruction_t decode(const uint8_t* o);
+  /** Fetches the next instruction from the bytestream at o */
+  instruction_t decode(const std::vector<uint8_t> o);
 
   std::string to_string(const instruction_t& i);
   const op_code_data_t& op_data(uint8_t opcode) const { return op_data_.at(opcode); }
