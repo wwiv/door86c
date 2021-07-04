@@ -20,8 +20,10 @@ struct reg_mod_rm {
 constexpr uint32_t op_mask_none = 0x00;
 // Has IMM or DISP or REL byte (8-bit)
 constexpr uint32_t op_mask_imm8 = 0x01;
+constexpr uint32_t op_mask_rel8 = 0x01;
 // Has IMM or DISP or REL byte (16-bit)
 constexpr uint32_t op_mask_imm16 = 0x02;
+constexpr uint32_t op_mask_rel16 = 0x02;
 // Has IMM or DISP or REL byte (32-bit)
 constexpr uint32_t op_mask_imm32 = 0x04;
 constexpr uint32_t op_mask_ext = 0x08;

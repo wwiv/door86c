@@ -398,7 +398,28 @@ void CPU::execute_0x6(const instruction_t& inst) {
 }
 
 void CPU::execute_0x7(const instruction_t& inst) {
-  switch (inst.op & 0x0f) {}
+  bool cond = false;
+  switch (inst.op & 0x0f) {
+  case 0x0: cond = core.flags.oflag(); break;
+  case 0x1: cond = !core.flags.oflag(); break;
+  case 0x2: cond = core.flags.cflag(); break;
+  case 0x3: cond = !core.flags.oflag(); break;
+  case 0x4: cond = core.flags.zflag(); break;
+  case 0x5: cond = !core.flags.zflag(); break;
+  case 0x6: cond = core.flags.cflag() && core.flags.zflag(); break;
+  case 0x7: cond = !core.flags.cflag() && !core.flags.zflag(); break;
+  case 0x8: cond = core.flags.sflag(); break;
+  case 0x9: cond = !core.flags.sflag(); break;
+  case 0xa: cond = core.flags.pflag(); break;
+  case 0xb: cond = !core.flags.pflag(); break;
+  case 0xc: cond = core.flags.sflag() != core.flags.oflag(); break;
+  case 0xd: cond = core.flags.sflag() == core.flags.oflag(); break;
+  case 0xe: cond = core.flags.zflag() && (core.flags.sflag() != core.flags.oflag()); break;
+  case 0xf: cond = !core.flags.zflag() && (core.flags.sflag() == core.flags.oflag()); break;
+  }
+  if (cond) {
+    core.ip += inst.operand8;
+  }
 }
 
 void CPU::execute_0x8(const instruction_t& inst) {
@@ -460,7 +481,7 @@ void CPU::execute_0x8(const instruction_t& inst) {
       VLOG(1) << "Unhandled submode of 0x83: " << inst.mdrm.reg;
     } break;
     }
-  }
+  } break;
   // 0x81
   case 0x1: {
     switch (inst.mdrm.reg) {
@@ -721,6 +742,11 @@ void CPU::execute_0xD(const instruction_t& inst) {
 
 void CPU::execute_0xE(const instruction_t& inst) {
   switch (inst.op & 0x0f) {
+  case 0x3: {
+    if (core.regs.x.cx == 0) {
+      core.ip += inst.operand8;
+    }
+  } break;
   // CALL rel16
   case 0x8: {
     // push the next IP onto the stack then jump ahead by the specified offset.
@@ -760,7 +786,7 @@ void CPU::execute_0xF(const instruction_t& inst) {
       r -= 1;
     } break;
     default: {
-      LOG(WARNING) << "Unhandled subcode of opcode: 0xFE; subcode: " << inst.mdrm.reg;
+      LOG(WARNING) << "Unhandled subcode of opcode: 0xFE; subcode: " << static_cast<int>(inst.mdrm.reg);
     } break;
     }
   } break;
@@ -793,7 +819,8 @@ void CPU::execute_0xF(const instruction_t& inst) {
     //  core.ip = inst.operand16;
     //} break;
     default: {
-      LOG(WARNING) << "Unhandled subcode of opcode: 0xFF; subcode: " << inst.mdrm.reg;
+      LOG(WARNING) << "Unhandled subcode of opcode: 0xFF; subcode: "
+                   << static_cast<int>(inst.mdrm.reg);
     } break;
     }
   } break;
@@ -820,9 +847,16 @@ void CPU::call_interrupt(int num) {
     case 0x4c: // terminate app.
       running_ = false;
       break;
+    default: {
+      // unhandled
+    } break;
     }
+  } else if (num >= 0x86 && num <= 0xF0) {
+    // INT 86 to F0: INT 86 to F0 - used by BASIC while in interpreter
+    running_ = false;
+    LOG(INFO) << "Exiting; Out of band Interrupt Num: 0x" << std::hex << num;
   } else {
-    fmt::print("Interrupt Num: 0x{:02x}\r\n", num);
+    LOG(INFO) << "Unhandled Interrupt Num: 0x" << std::hex << num;
   }
 }
 
