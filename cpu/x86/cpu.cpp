@@ -6,6 +6,11 @@
 #include <iostream>
 #include <iomanip>
 
+#ifdef _MSC_VER
+#include <intrin.h>
+#elif __GNUC__
+#endif 
+
 namespace door86::cpu::x86 {
 
 CPU::CPU() : core(), decoder(), memory(1 << 20) {}
@@ -424,6 +429,7 @@ void CPU::execute_0x7(const instruction_t& inst) {
 
 void CPU::execute_0x8(const instruction_t& inst) {
   switch (inst.op & 0x0f) {
+  // 0x80/M
   case 0x0: {
     switch (inst.mdrm.reg) {
     // 80 /0 ib: ADD r/m8, imm8
@@ -482,7 +488,7 @@ void CPU::execute_0x8(const instruction_t& inst) {
     } break;
     }
   } break;
-  // 0x81
+  // 0x81/M
   case 0x1: {
     switch (inst.mdrm.reg) {
     // 81 /0 iw: ADD r/m16, imm16
@@ -540,10 +546,12 @@ void CPU::execute_0x8(const instruction_t& inst) {
       VLOG(1) << "Unhandled submode of 0x83: " << inst.mdrm.reg;
     } break;
     }
-  } break; // 83/0":"add r/m16/32, imm8
+  } break; 
+  // 0x83/M
   case 0x3: {
     // only add if reg == 0
     switch (inst.mdrm.reg) {
+    // 83/0":"add r/m16/32, imm8
     case 0x0: {
       auto regmem16 = rmm16(inst);
       regmem16 += static_cast<uint16_t>(inst.operand8);
@@ -598,6 +606,22 @@ void CPU::execute_0x8(const instruction_t& inst) {
       VLOG(1) << "Unhandled submode of 0x83: " << inst.mdrm.reg;
     } break;
     }
+  } break;
+  // 0x84 /r: TEST r/m8, r8
+  case 0x4: {
+    auto rmm = rmm8(inst);
+    const auto saved_rmm = rmm.get();
+    auto r = r8(inst);
+    rmm &= r;
+    rmm.set(r.get());
+  } break;
+  // 0x85 /r: TEST r/m16, r16
+  case 0x5: {
+    auto rmm = rmm16(inst);
+    const auto saved_rmm = rmm.get();
+    auto r = r16(inst);
+    rmm &= r;
+    rmm.set(r.get());
   } break;
   // "8A/r":"mov r8, r/m8",
   case 0xA: {
@@ -660,6 +684,20 @@ void CPU::execute_0xA(const instruction_t& inst) {
     // offset is inst.operand16
     memory.set<uint16_t>(seg, inst.operand16, core.regs.x.ax);
   } break;
+  // A8 ib: TEST AL, imm8
+  case 0x8: {
+    uint8_t operand{inst.operand8};
+    Rmm<RmmType::REGISTER, uint8_t> op(&core, &operand);
+    auto r = r8(&core.regs.h.al);
+    op &= r;
+  } break;
+  // A9 iw: TEST AX, imm16
+  case 0x9: {
+    uint16_t operand{inst.operand16};
+    Rmm<RmmType::REGISTER, uint16_t> op(&core, &operand);
+    auto r = r16(&core.regs.x.ax);
+    op &= r;
+  } break;
   // SCAS m8
   case 0xE: {
     scas_m8(inst);
@@ -683,6 +721,8 @@ void CPU::execute_0xB(const instruction_t& inst) {
 
 void CPU::execute_0xC(const instruction_t& inst) {
   switch (inst.op & 0x0f) {
+  case 0x0: return execute_0xC0(inst, inst.mdrm.reg);
+  case 0x1: return execute_0xC1(inst, inst.mdrm.reg);
   // RET (near call and clear some bytes of stack)
   case 0x2: {
     core.ip = pop();
@@ -736,6 +776,14 @@ void CPU::execute_0xC(const instruction_t& inst) {
   }
 }
 
+void CPU::execute_0xC0(const instruction_t& inst, int subop) {
+  switch (subop) {}
+}
+
+void CPU::execute_0xC1(const instruction_t& inst, int subop) {
+  switch (subop) {}
+}
+
 void CPU::execute_0xD(const instruction_t& inst) {
   switch (inst.op & 0x0f) {}
 }
@@ -766,6 +814,76 @@ void CPU::execute_0xE(const instruction_t& inst) {
 
 void CPU::execute_0xF(const instruction_t& inst) {
   switch (inst.op & 0x0f) {
+  // 0xF6/M
+  case 0x6: {
+    switch (inst.mdrm.reg) {
+    case 0: {
+      uint8_t operand{inst.operand8};
+      Rmm<RmmType::REGISTER, uint8_t> op(&core, &operand);
+      auto rm = rmm8(inst);
+      op &= rm;
+    } break;
+    // NOT r/m8
+    case 2: {
+      auto rm = rmm8(inst);
+      const auto n = rm.get();
+      rm.set(~n);
+    } break;
+    // NEG r/m8
+    case 3: {
+      auto rm = rmm8(inst);
+      rm.neg();
+    } break;
+    }
+  } break;
+  // F6 /4 MUL r/m8
+  case 0x4: {
+    core.regs.x.ax = core.regs.h.al * inst.operand8;
+    core.flags.oflag(core.regs.h.ah);
+    core.flags.cflag(core.regs.h.ah);
+  } break;
+  // F6 /5 IMUL r/m8
+  case 0x5: {
+    core.regs.x.ax = core.regs.h.al * inst.operand8;
+    core.flags.oflag((core.regs.h.al & 0x80) && core.regs.h.ah);
+    core.flags.cflag((core.regs.h.al & 0x80) && core.regs.h.ah);
+  } break;
+  // 0xF7/M
+  case 0x7: {
+    switch (inst.mdrm.reg) {
+    case 0: {
+      uint16_t operand{inst.operand16};
+      Rmm<RmmType::REGISTER, uint16_t> op(&core, &operand);
+      auto rm = rmm16(inst);
+      op &= rm;
+    } break;
+    // NOT r/m16
+    case 2: {
+      auto rm = rmm16(inst);
+      const auto n = rm.get();
+      rm.set(~n);
+    } break;
+    // NEG r/m16
+    case 3: {
+      auto rm = rmm16(inst);
+      rm.neg();
+    } break;
+    // F7 /4 MUL r/m16
+    case 0x4: {
+      uint32_t result = core.regs.x.ax * inst.operand16;
+      core.regs.x.dx = ((result & 0xFF00) >> 16);
+      core.flags.oflag((core.regs.x.ax & 0x8000) && core.regs.x.dx);
+      core.flags.cflag((core.regs.x.ax & 0x8000) && core.regs.x.dx);
+    } break;
+    // F7 /5 IMUL r/m16
+    case 0x5: {
+      uint32_t result = core.regs.x.ax * inst.operand16;
+      core.regs.x.dx = ((result & 0xFF00) >> 16);
+      core.flags.oflag(core.regs.x.dx);
+      core.flags.cflag(core.regs.x.dx);
+    } break;
+    }
+  } break;
   // CLD: Clear directuon flag
   case 0xC: {
     core.flags.dflag(false);

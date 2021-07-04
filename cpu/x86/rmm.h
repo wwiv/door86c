@@ -158,6 +158,20 @@ public:
   inline Rmm& operator&=(const Rmm<RmmType::REGISTER, T>& other) { return operator&=(other.get()); }
   inline Rmm& operator&=(const Rmm<RmmType::EITHER, T>& other) { return operator&=(other.get()); }
 
+  inline Rmm& neg() {
+    bigT cur;
+    if constexpr (std::is_same_v<T, uint8_t>) {
+      cur = 0x100 - get();
+    } else 
+    if constexpr (std::is_same_v<T, uint16_t>) {
+      cur = 0x10000 - get();
+    } else {
+      static_assert(false, "needs uint8_t or uint16_t");
+    }
+    set(set_flags_from_bigt(cur));
+    return *this;
+  }
+
 private:
   cpu_core* core_;
   Memory* mem_;
