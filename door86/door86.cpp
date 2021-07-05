@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
   const auto& filename = cmdline.remaining().front();
 
   CPU cpu;
-  Dos dos;
+  Dos dos(&cpu);
 
   int code_offset = 0x100;
   int memory_needed = 0xffff;

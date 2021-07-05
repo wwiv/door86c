@@ -954,31 +954,8 @@ void CPU::call_interrupt(int num) {
     fn->second(num, *this);
     return;
   }
-  // static default handlers
-  if (num == 0x21) {
-    fmt::print("DOS Interrupt: 0x{:04x}\r\n", core.regs.x.ax);
-    switch (core.regs.h.ah) {
-    // display string
-    case 0x09: {
-      for (auto offset = core.regs.x.dx;; ++offset) {
-        const auto m = memory.get<uint8_t>(core.sregs.ds, offset);
-        if (m == '$') {
-          break;
-        }
-        if (m > 128) {
-          break;
-        }
-        fputc(m, stdout);
-      }
-    } break;
-    case 0x4c: // terminate app.
-      running_ = false;
-      break;
-    default: {
-      // unhandled
-    } break;
-    }
-  } else if (num >= 0x86 && num <= 0xF0) {
+  // static default fail safe handlers.
+  if (num >= 0x86 && num <= 0xF0) {
     // INT 86 to F0: INT 86 to F0 - used by BASIC while in interpreter
     running_ = false;
     LOG(INFO) << "Exiting; Out of band Interrupt Num: 0x" << std::hex << num;

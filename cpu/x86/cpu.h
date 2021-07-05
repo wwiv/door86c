@@ -72,12 +72,22 @@ public:
 
   void call_interrupt(int num);
 
+  // Processor State
+
+  // TODO: add in pause and resume separately to handlle HLT instruction
+  void halt() { running_ = false; }
+  void resume() { running_ = true; }
+
   // flags
 
   // flags for OF, SF, ZF, AF, PF CF for 8 bit values
   void parity_szp8(uint8_t oval, uint8_t nval);
   void parity_szp16(uint16_t oval, uint16_t nval);
 
+  // Interrupts
+  std::map<int, std::function<void(int num, CPU& cpu)>>& int_handlers() { return int_handlers_; }
+
+  // Public structures
 
   cpu_core core;
   Decoder decoder;

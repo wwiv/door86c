@@ -2,6 +2,7 @@
 #define INCLUDED_DOS_DOS_H
 
 #include "cpu/memory.h"
+#include "cpu/x86/cpu.h"
 
 #include <cstdint>
 #include <filesystem>
@@ -30,13 +31,13 @@ private:
 
 class Dos {
 public:
-  Dos();
+  Dos(door86::cpu::x86::CPU* cpu);
   ~Dos() = default;
 
-      // todo
-  // hold memory blocks
-  //
+  void int21(int, door86::cpu::x86::CPU&);
+
   DosMemoryManager mem_mgr;
+  door86::cpu::x86::CPU* cpu_{nullptr};
 };
 
 /*
