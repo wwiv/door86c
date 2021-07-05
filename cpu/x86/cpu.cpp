@@ -623,6 +623,18 @@ void CPU::execute_0x8(const instruction_t& inst) {
     rmm &= r;
     rmm.set(r.get());
   } break;
+  // XCHG r8, r/m8
+  case 0x6: {
+    auto r = r8(inst);
+    auto rmm = rmm8(inst);
+    swap(r, rmm);
+  } break;
+  // XCHG r16, r/m16
+  case 0x7: {
+    auto r = r16(inst);
+    auto rmm = rmm16(inst);
+    swap(r, rmm);
+  } break;
   // "8A/r":"mov r8, r/m8",
   case 0xA: {
     auto regmem8 = rmm8(inst);
@@ -642,7 +654,19 @@ void CPU::execute_0x8(const instruction_t& inst) {
 }
 
 void CPU::execute_0x9(const instruction_t& inst) {
-  switch (inst.op & 0x0f) {}
+  const auto last = inst.op & 0x0f;
+  if (last == 0) {
+    // NOP
+    return;
+  }
+  if (last < 8) {
+    // last == regnum (0-7);
+    auto left = r16(last);
+    auto right = r16(0);
+    swap(left, right);
+  }
+  switch (inst.op & 0x0f) {
+  }
 }
 
 void CPU::scas_m8(const instruction_t& inst) {
@@ -1190,6 +1214,10 @@ Rmm<RmmType::EITHER, uint16_t> CPU::rmm16(const instruction_t& inst) {
 // returns the register for an r16
 Rmm<RmmType::REGISTER, uint8_t> CPU::r8(const instruction_t& inst) {
   return Rmm<RmmType::REGISTER, uint8_t>(&core, core.regs.h.regptr(inst.mdrm.reg));
+}
+
+Rmm<RmmType::REGISTER, uint16_t> CPU::r16(int regnum) {
+  return Rmm<RmmType::REGISTER, uint16_t>(&core, core.regs.x.regptr(regnum));
 }
 
 Rmm<RmmType::REGISTER, uint16_t> CPU::r16(const instruction_t& inst) {

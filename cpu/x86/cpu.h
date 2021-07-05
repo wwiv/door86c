@@ -59,6 +59,7 @@ public:
   void execute_0xE(const instruction_t& inst);
   void execute_0xF6(const instruction_t& inst, int subop);
   void execute_0xF7(const instruction_t& inst, int subop);
+  void execute_0xFE(const instruction_t& inst, int subop);
   void execute_0xFF(const instruction_t& inst, int subop);
   void execute_0xF(const instruction_t& inst);
 
@@ -105,6 +106,7 @@ public:
 private:
   Rmm<RmmType::REGISTER, uint8_t> r8(const instruction_t& inst);
   Rmm<RmmType::REGISTER, uint16_t> r16(const instruction_t& inst);
+  Rmm<RmmType::REGISTER, uint16_t> r16(int regnum);
   Rmm<RmmType::REGISTER, uint8_t> r8(uint8_t* reg);
   Rmm<RmmType::REGISTER, uint16_t> r16(uint16_t* reg);
   Rmm<RmmType::EITHER, uint8_t> rmm8(const instruction_t& inst);

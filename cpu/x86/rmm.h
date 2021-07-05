@@ -269,12 +269,34 @@ private:
   const uint16_t off_;
 };
 
+/**
+ * Swap Rmms
+ */
+template <class R1, class R2> void swap(R1 left, R2 right) {
+  const auto tempr = left.get();
+  left.set(right.get());
+  right.set(tempr);
+}
 
+
+// calaculates the effective address encoded in the instruction
 uint16_t effective_address(const instruction_t& inst, const cpu_core& core);
+
+// Creates an Rmm for a 16bit register specified in the instrution, heeding any segment register overrides
 Rmm<RmmType::REGISTER, uint16_t> r16(const instruction_t& inst, cpu_core& core);
+
+// Creates an Rmm for a 8bit register specified in the instrution, heeding any segment register
+// overrides
 Rmm<RmmType::REGISTER, uint8_t> r8(const instruction_t& inst, cpu_core& core);
+
+// Creates an Rmm for a 8bit register or memory location specified in the instrution, heeding any
+// segment register overrides
 Rmm<RmmType::EITHER, uint8_t> rmm8(const instruction_t& inst, cpu_core& core, Memory& mem);
+
+// Creates an Rmm for a 16bit register or memory location specified in the instrution, heeding any
+// segment register overrides
 Rmm<RmmType::EITHER, uint16_t> rmm16(const instruction_t& inst, cpu_core& core, Memory& mem);
+
 
 } // namespace door86::cpu::x86
 

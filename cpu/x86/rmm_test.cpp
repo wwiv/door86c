@@ -28,6 +28,14 @@ public:
   Rmm<RmmType::REGISTER, uint16_t> dx() {
     return Rmm<RmmType::REGISTER, uint16_t>(&core, &core.regs.x.dx);
   };
+  Rmm<RmmType::MEMORY, uint16_t> mem16(uint16_t seg, uint16_t off, uint16_t val) {
+    memory.set<uint16_t>(seg, off, val);
+    return Rmm<RmmType::MEMORY, uint16_t>(&core, &memory, seg, off);
+  }
+  Rmm<RmmType::MEMORY, uint8_t> mem8(uint16_t seg, uint16_t off, uint8_t val) {
+    memory.set<uint8_t>(seg, off, val);
+    return Rmm<RmmType::MEMORY, uint8_t>(&core, &memory, seg, off);
+  }
 
   cpu_core core;
   Decoder decoder;
@@ -36,8 +44,7 @@ public:
 
 TEST_F(RmmTest, MemoryAccess) { 
   // cpu_core* core, Memory* mem, uint16_t seg, uint16_t off
-  memory.set<uint16_t>(10, 0, 0xcafe);
-  Rmm<RmmType::EITHER, uint16_t> rmm(&core, &memory, 10, 0);
+  auto rmm = mem16(10, 0, 0xcafe);
   ASSERT_EQ(0xCAFE, rmm.get());
 }
 
@@ -148,4 +155,13 @@ TEST_F(RmmTest, RCR8) {
   r.rcr(1);
   EXPECT_EQ(0x08, r.get());
   EXPECT_TRUE(core.flags.cflag());
+}
+
+TEST_F(RmmTest, XCHG) { 
+  core.regs.h.ch = 0x11;
+  auto r = ch();
+  auto rm = mem8(10, 10, 0x22);
+  swap(r, rm);
+  EXPECT_EQ(core.regs.h.ch, 0x22);
+  EXPECT_EQ(memory.get<uint8_t>(10, 10), 0x11);
 }
