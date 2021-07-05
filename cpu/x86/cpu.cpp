@@ -884,14 +884,18 @@ void CPU::execute_0xF(const instruction_t& inst) {
     } break;
     }
   } break;
+  // CLC: Clear carry flag
+  case 0x8: core.flags.cflag(false); break;
+  // STC: Set carry flag
+  case 0x9: core.flags.cflag(true); break;
+  // CLI: Clear interrupt flag
+  case 0xA: core.flags.iflag(false); break;
+  // STI: Set interrupt flag
+  case 0xB: core.flags.iflag(true); break;
   // CLD: Clear directuon flag
-  case 0xC: {
-    core.flags.dflag(false);
-  } break;
+  case 0xC: core.flags.dflag(false); break;
   // STD—Set Direction Flag
-  case 0xD: {
-    core.flags.dflag(true);
-  } break;
+  case 0xD: core.flags.dflag(true); break;
   // INC or DEC r/m8
   case 0xE: {
     switch (inst.mdrm.reg) {
