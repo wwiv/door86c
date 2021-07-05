@@ -30,7 +30,7 @@ private:
 
 class Dos {
 public:
-  Dos() = default;
+  Dos();
   ~Dos() = default;
 
       // todo

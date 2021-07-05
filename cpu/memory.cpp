@@ -13,7 +13,10 @@ static inline uint32_t abs_memory(uint16_t seg, uint16_t off) {
   return (seg * 0x10) + off; 
 }
 
-Memory::Memory(int size) : size_(size) { mem_ = new uint8_t[size]; }
+Memory::Memory(int size) : size_(size) { 
+  mem_ = new uint8_t[size];
+  memset(mem_, 0, size);
+}
 
 Memory::~Memory() {
   delete mem_;

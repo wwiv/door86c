@@ -7,6 +7,8 @@
 #include "cpu/x86/regs.h"
 #include "cpu/x86/rmm.h"
 #include <cstdint>
+#include <functional>
+#include <map>
 
 // Start with instructons needed for hello world in asm, then expand
 // to these, then on to others as needed.
@@ -92,6 +94,9 @@ private:
   Rmm<RmmType::EITHER, uint16_t> rmm16(const instruction_t& inst);
 
   bool running_{true};
+  // default interrupt handlers.  default means it's not been overridden
+  // by DOS code.
+  std::map<int, std::function<void(int num, CPU& cpu)>> int_handlers_;
 };
 
 

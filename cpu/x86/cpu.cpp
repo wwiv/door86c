@@ -945,7 +945,12 @@ void CPU::execute_0xF(const instruction_t& inst) {
   }
 }
 
-void CPU::call_interrupt(int num) { 
+void CPU::call_interrupt(int num) {
+  if (auto fn = int_handlers_.find(num); fn != std::end(int_handlers_)) {
+    fn->second(num, *this);
+    return;
+  }
+  // static default handlers
   if (num == 0x21) {
     fmt::print("DOS Interrupt: 0x{:04x}\r\n", core.regs.x.ax);
     switch (core.regs.h.ah) {

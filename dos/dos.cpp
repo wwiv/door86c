@@ -35,5 +35,10 @@ void DosMemoryManager::free(uint16_t seg) {
   //TODO(rushfan): Implement free
 }
 
+
+Dos::Dos() {
+
+}
+
 }
 
