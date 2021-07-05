@@ -218,8 +218,8 @@ std::vector<op_code_data_t> create_opcode_metadata() {
           {0xBE, op_mask_imm16, "MOV"},
           {0xBF, op_mask_imm16, "MOV"},
 
-          {0xC0, op_mask_notimpl | op_mask_modrm8, ""},
-          {0xC1, op_mask_notimpl | op_mask_modrm16, ""},
+          {0xC0, op_mask_modrm8, "0xC0/M"},
+          {0xC1, op_mask_modrm16, "0xC1/M"},
           {0xC2, op_mask_imm16, "RET"},
           {0xC3, op_mask_none, "RET"},
           {0xC4, op_mask_modrm16, "LES"},

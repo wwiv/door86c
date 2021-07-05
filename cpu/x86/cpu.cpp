@@ -801,11 +801,31 @@ void CPU::execute_0xC(const instruction_t& inst) {
 }
 
 void CPU::execute_0xC0(const instruction_t& inst, int subop) {
-  switch (subop) {}
+  auto r = rmm8(inst);
+  switch (subop) {
+  case 0: r.rol(inst.operand8); break;
+  case 1: r.ror(inst.operand8); break;
+  case 2: r.rcl(inst.operand8); break;
+  case 3: r.rcr(inst.operand8); break;
+  case 4: r.shl(inst.operand8); break;
+  case 5: r.shr(inst.operand8); break;
+  case 6: r.shl(inst.operand8); break;
+  case 7: r.sar(inst.operand8); break;
+  }
 }
 
 void CPU::execute_0xC1(const instruction_t& inst, int subop) {
-  switch (subop) {}
+  auto r = rmm16(inst);
+  switch (subop) {
+  case 0: r.rol(inst.operand8); break;
+  case 1: r.ror(inst.operand8); break;
+  case 2: r.rcl(inst.operand8); break;
+  case 3: r.rcr(inst.operand8); break;
+  case 4: r.shl(inst.operand8); break;
+  case 5: r.shr(inst.operand8); break;
+  case 6: r.shl(inst.operand8); break;
+  case 7: r.sar(inst.operand8); break;
+  }
 }
 
 void CPU::execute_0xD0(const instruction_t& inst, int subop) {
@@ -1018,7 +1038,6 @@ void CPU::execute_0xFF(const instruction_t& inst, int subop) {
   case 6: {
     const auto r = rmm16(inst);
     push(r.get());
-    break;
   } break;
   default: {
     LOG(WARNING) << "Unhandled subcode of opcode: 0xFF; subcode: "
