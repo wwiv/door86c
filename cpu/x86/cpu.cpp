@@ -784,8 +784,73 @@ void CPU::execute_0xC1(const instruction_t& inst, int subop) {
   switch (subop) {}
 }
 
+void CPU::execute_0xD0(const instruction_t& inst, int subop) {
+  auto r = rmm8(inst);
+  switch (subop) {
+  case 0: r.rol(1); break;
+  case 1: r.ror(1); break;
+  case 2: r.rcl(1); break;
+  case 3: r.rcr(1); break;
+  case 4: r.shl(1); break;
+  case 5: r.shr(1); break;
+  // undocumented SHL/SAL
+  case 6: r.shl(1); break;
+  case 7: r.sar(1); break;
+  }
+}
+
+void CPU::execute_0xD1(const instruction_t& inst, int subop) {
+  auto r = rmm16(inst);
+  switch (subop) {
+  case 0: r.rol(1); break;
+  case 1: r.ror(1); break;
+  case 2: r.rcl(1); break;
+  case 3: r.rcr(1); break;
+  case 4: r.shl(1); break;
+  case 5: r.shr(1); break;
+  // undocumented SHL/SAL
+  case 6: r.shl(1); break;
+  case 7: r.sar(1); break;
+  }
+}
+
+void CPU::execute_0xD2(const instruction_t& inst, int subop) {
+  auto r = rmm8(inst);
+  switch (subop) {
+  case 0: r.rol(core.regs.h.cl); break;
+  case 1: r.ror(core.regs.h.cl); break;
+  case 2: r.rcl(core.regs.h.cl); break;
+  case 3: r.rcr(core.regs.h.cl); break;
+  case 4: r.shl(core.regs.h.cl); break;
+  case 5: r.shr(core.regs.h.cl); break;
+  // undocumented SHL/SAL
+  case 6: r.shl(core.regs.h.cl); break;
+  case 7: r.sar(core.regs.h.cl); break;
+  }
+}
+
+void CPU::execute_0xD3(const instruction_t& inst, int subop) {
+  auto r = rmm16(inst);
+  switch (subop) {
+  case 0: r.rol(core.regs.h.cl); break;
+  case 1: r.ror(core.regs.h.cl); break;
+  case 2: r.rcl(core.regs.h.cl); break;
+  case 3: r.rcr(core.regs.h.cl); break;
+  case 4: r.shl(core.regs.h.cl); break;
+  case 5: r.shr(core.regs.h.cl); break;
+  // undocumented SHL/SAL
+  case 6: r.shl(core.regs.h.cl); break;
+  case 7: r.sar(core.regs.h.cl); break;
+  }
+}
+
 void CPU::execute_0xD(const instruction_t& inst) {
-  switch (inst.op & 0x0f) {}
+  switch (inst.op & 0x0f) {
+  case 0x0: execute_0xD0(inst, inst.mdrm.reg); break;
+  case 0x1: execute_0xD1(inst, inst.mdrm.reg); break;
+  case 0x2: execute_0xD2(inst, inst.mdrm.reg); break;
+  case 0x3: execute_0xD3(inst, inst.mdrm.reg); break;
+  }
 }
 
 void CPU::execute_0xE(const instruction_t& inst) {

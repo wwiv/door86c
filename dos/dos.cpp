@@ -38,12 +38,26 @@ void DosMemoryManager::free(uint16_t seg) {
 
 
 Dos::Dos(door86::cpu::x86::CPU* cpu) : cpu_(cpu) {
-  cpu_->int_handlers() .try_emplace(0x21, std::bind(&Dos::int21, this, std::placeholders::_1, std::placeholders::_2));
+  cpu_->int_handlers().try_emplace(
+      0x20, std::bind(&Dos::int20, this, std::placeholders::_1, std::placeholders::_2));
+  cpu_->int_handlers().try_emplace(
+      0x21, std::bind(&Dos::int21, this, std::placeholders::_1, std::placeholders::_2));
 }
+
+void Dos::int20(int, door86::cpu::x86::CPU& cpu) { cpu.halt(); }
 
 void Dos::int21(int, door86::cpu::x86::CPU& cpu) {
   fmt::print("DOS Interrupt: 0x{:04x}\r\n", cpu.core.regs.x.ax);
   switch (cpu.core.regs.h.ah) {
+  // terminate app
+  case 0x00: cpu.halt(); break;
+  // read char
+  case 0x01: {
+    // TODO(rushfan): Need to do break checking, etc.
+    cpu.core.regs.h.al = static_cast<uint8_t>(fgetc(stdin));
+  } break;
+  // display char
+  case 0x02: fputc(cpu.core.regs.h.dl, stdout); break;
   // display string
   case 0x09: {
     for (auto offset = cpu.core.regs.x.dx;; ++offset) {
@@ -55,8 +69,15 @@ void Dos::int21(int, door86::cpu::x86::CPU& cpu) {
       fputc(m, stdout);
     }
   } break;
-  case 0x4c: // terminate app.
+  // terminate app.
+  case 0x4c:
     cpu.halt();
+    break;
+  // INT 21 - DOS 2+ - GET DOS VERSION
+  case 0x30:
+    cpu.core.regs.x.ax = 0x0050;
+    cpu.core.regs.x.bx = 0x0000;
+    cpu.core.regs.x.cx = 0x0000;
     break;
   default: {
     // unhandled

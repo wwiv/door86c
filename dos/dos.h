@@ -34,6 +34,7 @@ public:
   Dos(door86::cpu::x86::CPU* cpu);
   ~Dos() = default;
 
+  void int20(int, door86::cpu::x86::CPU&);
   void int21(int, door86::cpu::x86::CPU&);
 
   DosMemoryManager mem_mgr;

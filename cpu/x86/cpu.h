@@ -51,6 +51,10 @@ public:
   void execute_0xC(const instruction_t& inst);
   void execute_0xC0(const instruction_t& inst, int subop);
   void execute_0xC1(const instruction_t& inst, int subop);
+  void execute_0xD0(const instruction_t& inst, int subop);
+  void execute_0xD1(const instruction_t& inst, int subop);
+  void execute_0xD2(const instruction_t& inst, int subop);
+  void execute_0xD3(const instruction_t& inst, int subop);
   void execute_0xD(const instruction_t& inst);
   void execute_0xE(const instruction_t& inst);
   void execute_0xF(const instruction_t& inst);

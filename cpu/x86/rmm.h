@@ -26,9 +26,14 @@ public:
   // A type that is one larger than T, used to detect overflow
   using bigT = std::conditional_t<std::is_same_v<T, uint8_t>, uint16_t,
                std::conditional_t<std::is_same_v<T, uint16_t>, uint32_t, void>>;
+  // FIXME
+  // TODO(rushfan): Our CF and OF handling is completely broken.
   static constexpr bigT cf_mask = std::numeric_limits<bigT>::max() - std::numeric_limits<T>::max();
   static constexpr bigT of_mask =
       std::numeric_limits<bigT>::max() - std::numeric_limits<std::make_signed_t<T>>::max();
+  static constexpr auto digits = std::numeric_limits<T>::digits;
+  static constexpr auto msb_mask = (1 << (digits - 1));
+  static constexpr auto remainder_mask = ~msb_mask;
 
   Rmm(cpu_core* core, T* reg) :core_(core),  mem_(nullptr), reg_(reg), seg_(0), off_(0) {}
   Rmm(cpu_core* core, Memory* mem, uint16_t seg, uint16_t off)
@@ -61,6 +66,11 @@ public:
     }
   }
 
+  inline void update_flags_psz() {
+    const auto cur = get();
+    set_flags_psz(cur);
+  }
+
   inline void set_flags_psz(const T& cur) {
     core_->flags.pflag((kern_popcount(cur) % 2) == 0);
     core_->flags.zflag(cur == 0);
@@ -77,7 +87,7 @@ public:
     core_->flags.oflag(cur & of_mask);
     core_->flags.cflag(cur & cf_mask);
 
-    const T adj_cur = static_cast<T>(cur);
+    const auto adj_cur = static_cast<T>(cur);
     set_flags_psz(adj_cur);
     return adj_cur;
   }
@@ -169,6 +179,85 @@ public:
       static_assert(false, "needs uint8_t or uint16_t");
     }
     set(set_flags_from_bigt(cur));
+    return *this;
+  }
+
+  inline Rmm& shl(int num) { 
+    auto v = get();
+    core_->flags.cflag(v & msb_mask);
+    v = (v << num);
+    set(v);
+    set_flags_psz(v);
+    return *this;
+  }
+
+  inline Rmm& rol(int num) {
+    auto v = get();
+    core_->flags.cflag(v & msb_mask);
+    const auto lsb = (v & msb_mask) ? 1 : 0;
+    v = (v << num) | lsb;
+    set(v);
+    set_flags_psz(v);
+    return *this;
+  }
+
+  // rotate left with carry
+  inline Rmm& rcl(int num) {
+    auto v = get();
+    const auto lsb = core_->flags.cflag() ? 1 : 0;
+    core_->flags.cflag(v & msb_mask);
+    v = (v << num) | lsb;
+    set(v);
+    set_flags_psz(v);
+    return *this;
+  }
+
+  inline Rmm& shr(int num) {
+    auto v = get();
+    core_->flags.cflag(v & 1);
+    v = (v >> num);
+    set(v);
+    set_flags_psz(v);
+    return *this;
+  }
+
+  // rotate right with carry
+  inline Rmm& rcr(int num) {
+    auto v = get();
+    const auto msb = core_->flags.cflag() ? msb_mask : 0;
+    core_->flags.cflag(v & 1);
+    v = (v >> num) | msb;
+    set(v);
+    set_flags_psz(v);
+    return *this;
+  }
+
+  // rotate right
+  inline Rmm& ror(int num) {
+    auto v = get();
+    core_->flags.cflag(v & 1);
+    const auto msb = (v & 1) ? msb_mask : 0;
+    v = (v >> num) | msb;
+    set(v);
+    set_flags_psz(v);
+    return *this;
+  }
+
+  inline Rmm& sar(int num) {
+    auto v = get();
+    core_->flags.cflag(v & 1);
+    // if we have the sign bit
+    const bool neg = (v & msb_mask) != 0;
+    // clear the sign bit
+    v &= ~msb_mask;
+    // shift to the right
+    v = v >> num;
+    if (neg) {
+      // restore the sign bit
+      v |= msb_mask;
+    }
+    set(v);
+    set_flags_psz(v);
     return *this;
   }
 

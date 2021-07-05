@@ -22,6 +22,9 @@ public:
   Rmm<RmmType::REGISTER, uint16_t> cx() {
     return Rmm<RmmType::REGISTER, uint16_t>(&core, &core.regs.x.cx);
   };
+  Rmm<RmmType::REGISTER, uint8_t> ch() {
+    return Rmm<RmmType::REGISTER, uint8_t>(&core, &core.regs.h.ch);
+  };
   Rmm<RmmType::REGISTER, uint16_t> dx() {
     return Rmm<RmmType::REGISTER, uint16_t>(&core, &core.regs.x.dx);
   };
@@ -41,7 +44,7 @@ TEST_F(RmmTest, MemoryAccess) {
 TEST_F(RmmTest, RegisterAccess) {
   // cpu_core* core, Memory* mem, uint16_t seg, uint16_t off
   core.regs.x.cx = 0xCAFE;
-  Rmm<RmmType::EITHER, uint16_t> rmm(&core, &core.regs.x.cx);
+  auto rmm = cx();
   ASSERT_EQ(0xCAFE, rmm.get());
 }
 
@@ -63,4 +66,86 @@ TEST_F(RmmTest, Reg_ZF) {
   EXPECT_EQ(0x0000, r.get());
   EXPECT_FALSE(core.flags.cflag());
   EXPECT_TRUE(core.flags.zflag());
+}
+
+TEST_F(RmmTest, SHL8) {
+  EXPECT_FALSE(core.flags.cflag());
+  core.regs.h.ch = 0xff;
+  auto r = ch();
+  EXPECT_EQ(0xff, r.get());
+  r.shl(1);
+  EXPECT_EQ(0xfe, r.get());
+  EXPECT_TRUE(core.flags.cflag());
+}
+
+TEST_F(RmmTest, SHR8) {
+  EXPECT_FALSE(core.flags.cflag());
+  core.regs.h.ch = 0xff;
+  auto r = ch();
+  EXPECT_EQ(0xff, r.get());
+  r.shr(1);
+  EXPECT_EQ(0x7f, r.get());
+  EXPECT_TRUE(core.flags.cflag());
+}
+
+TEST_F(RmmTest, SHR16) {
+  EXPECT_FALSE(core.flags.cflag());
+  core.regs.x.cx = 0xffff;
+  auto r = cx();
+  EXPECT_EQ(0xffff, r.get());
+  r.shr(1);
+  EXPECT_EQ(0x7fff, r.get());
+  EXPECT_TRUE(core.flags.cflag());
+}
+
+TEST_F(RmmTest, SAR8) {
+  EXPECT_FALSE(core.flags.cflag());
+  core.regs.h.ch = 0xff;
+  auto r = ch();
+  EXPECT_EQ(0xff, r.get());
+  r.sar(1);
+  EXPECT_EQ(0xbf, r.get()); // 0xbf is (0x7f >> 1 | 0x80)
+  EXPECT_TRUE(core.flags.cflag());
+}
+
+TEST_F(RmmTest, SAR16) {
+  EXPECT_FALSE(core.flags.cflag());
+  core.regs.x.cx = 0xffff;
+  auto r = cx();
+  EXPECT_EQ(0xffff, r.get());
+  r.sar(1);
+  EXPECT_EQ(0xbfff, r.get()); // 0xbfff is (0x7fff >> 1 | 0x80)
+  EXPECT_TRUE(core.flags.cflag());
+}
+
+TEST_F(RmmTest, ROL8) {
+  EXPECT_FALSE(core.flags.cflag());
+  core.regs.h.ch = 0x81;
+  auto r = ch();
+  EXPECT_EQ(0x81, r.get());
+  r.rol(1);
+  EXPECT_EQ(0x03, r.get());
+  EXPECT_TRUE(core.flags.cflag());
+}
+
+TEST_F(RmmTest, RCL8) {
+  EXPECT_FALSE(core.flags.cflag());
+  core.regs.h.ch = 0x81;
+  auto r = ch();
+  r.rcl(1);
+  EXPECT_EQ(0x02, r.get());
+  EXPECT_TRUE(core.flags.cflag());
+  r.rcl(1);
+  // bit 4 + carry flag
+  EXPECT_EQ(0x05, r.get());
+  EXPECT_FALSE(core.flags.cflag());
+}
+
+TEST_F(RmmTest, RCR8) {
+  EXPECT_FALSE(core.flags.cflag());
+  core.regs.h.ch = 0x11;
+  auto r = ch();
+  r.rcr(1);
+  EXPECT_EQ(0x08, r.get());
+  EXPECT_TRUE(core.flags.cflag());
 }
