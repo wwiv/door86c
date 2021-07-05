@@ -57,6 +57,9 @@ public:
   void execute_0xD3(const instruction_t& inst, int subop);
   void execute_0xD(const instruction_t& inst);
   void execute_0xE(const instruction_t& inst);
+  void execute_0xF6(const instruction_t& inst, int subop);
+  void execute_0xF7(const instruction_t& inst, int subop);
+  void execute_0xFF(const instruction_t& inst, int subop);
   void execute_0xF(const instruction_t& inst);
 
   // handle rep and repne

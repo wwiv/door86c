@@ -877,29 +877,24 @@ void CPU::execute_0xE(const instruction_t& inst) {
   }
 }
 
-void CPU::execute_0xF(const instruction_t& inst) {
-  switch (inst.op & 0x0f) {
-  // 0xF6/M
-  case 0x6: {
-    switch (inst.mdrm.reg) {
-    case 0: {
-      uint8_t operand{inst.operand8};
-      Rmm<RmmType::REGISTER, uint8_t> op(&core, &operand);
-      auto rm = rmm8(inst);
-      op &= rm;
-    } break;
-    // NOT r/m8
-    case 2: {
-      auto rm = rmm8(inst);
-      const auto n = rm.get();
-      rm.set(~n);
-    } break;
-    // NEG r/m8
-    case 3: {
-      auto rm = rmm8(inst);
-      rm.neg();
-    } break;
-    }
+void CPU::execute_0xF6(const instruction_t& inst, int subop) {
+  switch (inst.mdrm.reg) {
+  case 0: {
+    uint8_t operand{inst.operand8};
+    Rmm<RmmType::REGISTER, uint8_t> op(&core, &operand);
+    auto rm = rmm8(inst);
+    op &= rm;
+  } break;
+  // NOT r/m8
+  case 2: {
+    auto rm = rmm8(inst);
+    const auto n = rm.get();
+    rm.set(~n);
+  } break;
+  // NEG r/m8
+  case 3: {
+    auto rm = rmm8(inst);
+    rm.neg();
   } break;
   // F6 /4 MUL r/m8
   case 0x4: {
@@ -913,42 +908,110 @@ void CPU::execute_0xF(const instruction_t& inst) {
     core.flags.oflag((core.regs.h.al & 0x80) && core.regs.h.ah);
     core.flags.cflag((core.regs.h.al & 0x80) && core.regs.h.ah);
   } break;
-  // 0xF7/M
-  case 0x7: {
-    switch (inst.mdrm.reg) {
-    case 0: {
-      uint16_t operand{inst.operand16};
-      Rmm<RmmType::REGISTER, uint16_t> op(&core, &operand);
-      auto rm = rmm16(inst);
-      op &= rm;
-    } break;
-    // NOT r/m16
-    case 2: {
-      auto rm = rmm16(inst);
-      const auto n = rm.get();
-      rm.set(~n);
-    } break;
-    // NEG r/m16
-    case 3: {
-      auto rm = rmm16(inst);
-      rm.neg();
-    } break;
-    // F7 /4 MUL r/m16
-    case 0x4: {
-      uint32_t result = core.regs.x.ax * inst.operand16;
-      core.regs.x.dx = ((result & 0xFF00) >> 16);
-      core.flags.oflag((core.regs.x.ax & 0x8000) && core.regs.x.dx);
-      core.flags.cflag((core.regs.x.ax & 0x8000) && core.regs.x.dx);
-    } break;
-    // F7 /5 IMUL r/m16
-    case 0x5: {
-      uint32_t result = core.regs.x.ax * inst.operand16;
-      core.regs.x.dx = ((result & 0xFF00) >> 16);
-      core.flags.oflag(core.regs.x.dx);
-      core.flags.cflag(core.regs.x.dx);
-    } break;
-    }
+  }
+}
+
+void CPU::execute_0xF7(const instruction_t& inst, int subop) {
+  switch (inst.mdrm.reg) {
+  case 0: {
+    uint16_t operand{inst.operand16};
+    Rmm<RmmType::REGISTER, uint16_t> op(&core, &operand);
+    auto rm = rmm16(inst);
+    op &= rm;
   } break;
+  // NOT r/m16
+  case 2: {
+    auto rm = rmm16(inst);
+    const auto n = rm.get();
+    rm.set(~n);
+  } break;
+  // NEG r/m16
+  case 3: {
+    auto rm = rmm16(inst);
+    rm.neg();
+  } break;
+  // F7 /4 MUL r/m16
+  case 0x4: {
+    uint32_t result = core.regs.x.ax * inst.operand16;
+    core.regs.x.dx = ((result & 0xFF00) >> 16);
+    core.flags.oflag((core.regs.x.ax & 0x8000) && core.regs.x.dx);
+    core.flags.cflag((core.regs.x.ax & 0x8000) && core.regs.x.dx);
+  } break;
+  // F7 /5 IMUL r/m16
+  case 0x5: {
+    uint32_t result = core.regs.x.ax * inst.operand16;
+    core.regs.x.dx = ((result & 0xFF00) >> 16);
+    core.flags.oflag(core.regs.x.dx);
+    core.flags.cflag(core.regs.x.dx);
+  } break;
+  }
+}
+
+void CPU::execute_0xFE(const instruction_t& inst, int subop) {
+  switch (inst.mdrm.reg) {
+  case 0: { // INC
+    auto r = rmm8(inst);
+    r += 1;
+  } break;
+  case 1: { // DEC
+    auto r = rmm8(inst);
+    r -= 1;
+  } break;
+  default: {
+    LOG(WARNING) << "Unhandled subcode of opcode: 0xFE; subcode: "
+                 << static_cast<int>(inst.mdrm.reg);
+  } break;
+  }
+}
+
+void CPU::execute_0xFF(const instruction_t& inst, int subop) {
+  switch (inst.mdrm.reg) {
+  case 0: { // INC
+    auto r = rmm16(inst);
+    r += 1;
+  } break;
+  case 1: { // DEC
+    auto r = rmm16(inst);
+    r -= 1;
+  } break;
+  case 2: { // CALL
+    // push the next IP onto the stack then jump ahead by the specified offset.
+    push(core.ip);
+    core.ip = inst.operand16;
+  } break;
+  // JMP r/m16
+  case 4: {
+    core.ip = inst.operand16;
+  } break;
+  // 5: JMP m16:16
+  // TODO(rushfan): Need an example of this.
+  // case 5: {
+  //  const auto current_seg = core.sregs.get(inst.seg_index());
+  //  const auto offset = memory.get<uint16_t>(seg, inst.operand16);
+  //  const auto seg = memory.get<uint16_t>(seg, inst.operand16 + 2);
+  //  core.ip = inst.operand16;
+  //} break;
+  case 6: {
+    const auto r = rmm16(inst);
+    push(r.get());
+    break;
+  } break;
+  default: {
+    LOG(WARNING) << "Unhandled subcode of opcode: 0xFF; subcode: "
+                 << static_cast<int>(inst.mdrm.reg);
+  } break;
+  }
+}
+
+
+void CPU::execute_0xF(const instruction_t& inst) {
+  switch (inst.op & 0x0f) {
+  // 0xF5: CMC
+  case 0x5: core.flags.cflag(!core.flags.cflag()); break;
+  // 0xF6/M
+  case 0x6: execute_0xF6(inst, inst.mdrm.reg); break;
+  // 0xF7/M
+  case 0x7: execute_0xF7(inst, inst.mdrm.reg); break;
   // CLC: Clear carry flag
   case 0x8: core.flags.cflag(false); break;
   // STC: Set carry flag
@@ -962,55 +1025,9 @@ void CPU::execute_0xF(const instruction_t& inst) {
   // STD—Set Direction Flag
   case 0xD: core.flags.dflag(true); break;
   // INC or DEC r/m8
-  case 0xE: {
-    switch (inst.mdrm.reg) {
-    case 0: { // INC
-      auto r = rmm8(inst);
-      r += 1;
-    } break;
-    case 1: { // DEC
-      auto r = rmm8(inst);
-      r -= 1;
-    } break;
-    default: {
-      LOG(WARNING) << "Unhandled subcode of opcode: 0xFE; subcode: " << static_cast<int>(inst.mdrm.reg);
-    } break;
-    }
-  } break;
+  case 0xE: execute_0xFE(inst, inst.mdrm.reg); break;
   // INC r/m16
-  case 0xF: {
-    switch (inst.mdrm.reg) {
-    case 0: { // INC
-      auto r = rmm16(inst);
-      r += 1;
-    } break;
-    case 1: { // DEC
-      auto r = rmm16(inst);
-      r -= 1;
-    } break;
-    case 2: { // CALL
-      // push the next IP onto the stack then jump ahead by the specified offset.
-      push(core.ip);
-      core.ip = inst.operand16;
-    } break;
-    // JMP r/m16
-    case 4: {
-      core.ip = inst.operand16;
-    } break;
-    // 5: JMP m16:16
-    // TODO(rushfan): Need an example of this.
-    //case 5: {
-    //  const auto current_seg = core.sregs.get(inst.seg_index());
-    //  const auto offset = memory.get<uint16_t>(seg, inst.operand16);
-    //  const auto seg = memory.get<uint16_t>(seg, inst.operand16 + 2);
-    //  core.ip = inst.operand16;
-    //} break;
-    default: {
-      LOG(WARNING) << "Unhandled subcode of opcode: 0xFF; subcode: "
-                   << static_cast<int>(inst.mdrm.reg);
-    } break;
-    }
-  } break;
+  case 0xF: execute_0xFF(inst, inst.mdrm.reg); break;
   }
 }
 

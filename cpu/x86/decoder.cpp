@@ -275,7 +275,7 @@ std::vector<op_code_data_t> create_opcode_metadata() {
           {0xF2, op_mask_notimpl, ""},
           {0xF3, op_mask_notimpl, ""},
           {0xF4, op_mask_notimpl, ""},
-          {0xF5, op_mask_notimpl, ""},
+          {0xF5, op_mask_none, "CMC"},
           {0xF6, op_mask_modrm8, "0xF6/M"},
           {0xF7, op_mask_modrm16, "0xF7/M"},
           {0xF8, op_mask_none, "CLC"},
