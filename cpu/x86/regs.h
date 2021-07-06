@@ -199,15 +199,15 @@ constexpr uint16_t OF = 0x0800;
 
 class flags_t {
 public:
-  inline bool cflag() { return value_ & CF; }
-  inline bool pflag() { return value_ & PF; }
-  inline bool aflag() { return value_ & AF; }
-  inline bool zflag() { return value_ & ZF; }
-  inline bool sflag() { return value_ & ZF; }
-  inline bool tflag() { return value_ & TF; }
-  inline bool iflag() { return value_ & IF; }
-  inline bool dflag() { return value_ & DF; }
-  inline bool oflag() { return value_ & OF; }
+  inline bool cflag() const { return value_ & CF; }
+  inline bool pflag() const { return value_ & PF; }
+  inline bool aflag() const { return value_ & AF; }
+  inline bool zflag() const { return value_ & ZF; }
+  inline bool sflag() const { return value_ & ZF; }
+  inline bool tflag() const { return value_ & TF; }
+  inline bool iflag() const { return value_ & IF; }
+  inline bool dflag() const { return value_ & DF; }
+  inline bool oflag() const { return value_ & OF; }
 
   // set
 
@@ -270,7 +270,7 @@ public:
   inline void reset() { value_ = 0xf002; }
   inline void set(uint16_t flg) { value_ |= flg; }
   inline void clear(uint16_t flg) { value_ &= !flg; }
-  inline bool test(uint16_t flg) { return value_ & flg; }
+  inline bool test(uint16_t flg) const { return value_ & flg; }
 
   uint16_t value_{0xf002};
 };

@@ -39,6 +39,8 @@ constexpr uint32_t op_mask_reg_is_sreg = 0x100;
 constexpr uint32_t op_mask_so_opcode = 0x100;
 // Use ZF in rep for terminating the loop.
 constexpr uint32_t uses_rep_zf = 0x1000;
+// Used reg for subcodes
+constexpr uint32_t uses_reg_subcode = 0x2000;
 
 // TODO(rushfan): Add metadata for (a) is multiplexed byte with reg, is rep_allowed, 
 
@@ -68,6 +70,8 @@ public:
   bool has_modrm() const;
   /** returns the overridden or default segment to use for this instrction */
   segment_t seg_index() const;
+
+  std::string DebugString() const;
 
   // prefix instructions
   std::optional<segment_t> seg_override;

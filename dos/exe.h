@@ -1,5 +1,5 @@
-#ifndef INCLUDED_DOS_PSP_H
-#define INCLUDED_DOS_PSP_H
+#ifndef INCLUDED_DOS_EXE_H
+#define INCLUDED_DOS_EXE_H
 
 #include "cpu/memory.h"
 
@@ -66,4 +66,4 @@ bool load_image(const std::filesystem::path& filepath, uint16_t base_segment, ui
 
 } // namespace door86::dos
 
-#endif // INCLUDED_DOS_PSP_H
+#endif // INCLUDED_DOS_EXE_H

@@ -54,54 +54,9 @@ int main(int argc, char** argv) {
   CPU cpu;
   Dos dos(&cpu);
 
-  int code_offset = 0x100;
-  int memory_needed = 0xffff;
-  if (is_exe(filename)) {
-    auto o = read_exe_header(filename);
-    if (!o) {
-      std::cout << "Failed to read exe header for file: " << filename;
-      return EXIT_FAILURE;
-    }
-    auto exe = o.value();
-    code_offset = exe.header_size();
-    memory_needed = exe.memory_needed();
-    auto oseg = dos.mem_mgr.allocate(memory_needed);
-    if (!oseg) {
-      std::cout << "Failed to allocate memory: " << memory_needed;
-      return EXIT_FAILURE;
-    }
-    const auto psp_seg = oseg.value();
-    exe.load_image(psp_seg, cpu.memory);
-    cpu.core.sregs.ds = psp_seg;
-    cpu.core.sregs.es = psp_seg;
-
-    // skip PSP
-    const auto seg = psp_seg + 0x10; 
-    cpu.core.sregs.cs = exe.hdr.cs + seg;
-    cpu.core.sregs.ss = exe.hdr.ss + seg;
-    cpu.core.regs.x.sp = exe.hdr.sp + seg;
-    cpu.core.ip = exe.hdr.ip;
-    // load_image will relocate relos
-  } else {
-    //
-    // COM file
-    //
-    auto oseg = dos.mem_mgr.allocate(memory_needed);
-    if (!oseg) {
-      std::cout << "Failed to allocate memory: " << memory_needed;
-      return EXIT_FAILURE;
-    }
-    const auto psp_seg = oseg.value();
-    cpu.core.sregs.ds = psp_seg;
-    cpu.core.sregs.es = psp_seg;
-
-    const auto seg = psp_seg + 0x100;
-    cpu.core.sregs.cs = seg;
-    cpu.core.sregs.ss = seg;
-    cpu.core.regs.x.sp = seg;
-    cpu.core.ip = 0;
+  if (!dos.initialize_process(filename)) {
+    LOG(WARNING) << "Failed to initialize DOS process";
   }
-
   cpu.core.regs.x.ax = 2; // drive C
   const auto start = std::chrono::system_clock::now();
   bool result = cpu.run();

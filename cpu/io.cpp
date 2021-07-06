@@ -6,12 +6,12 @@
 namespace door86::cpu {
 
 uint8_t IO::inb(uint16_t port) {
-  LOG(INFO) << "Called inb(" << port << ")";
+  LOG(INFO) << "Called inb(" << std::hex << port << ")";
   return 0;
 }
 
 uint16_t IO::inw(uint16_t port) {
-  LOG(INFO) << "Called inw(" << port << ")";
+  LOG(INFO) << "Called inw(" << std::hex << port << ")";
   return 0;
 }
 

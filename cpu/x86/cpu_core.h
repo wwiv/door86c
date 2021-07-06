@@ -5,6 +5,7 @@
 #include "cpu/x86/decoder.h"
 #include "cpu/x86/regs.h"
 #include <cstdint>
+#include <string>
 
 // Start with instructons needed for hello world in asm, then expand
 // to these, then on to others as needed.
@@ -18,6 +19,7 @@ public:
   sregs_t sregs;
   flags_t flags;
   uint16_t ip{0};
+  std::string DebugString() const;
 };
 
 } // namespace door86::cpu::x86

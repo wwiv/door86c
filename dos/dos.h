@@ -3,9 +3,11 @@
 
 #include "cpu/memory.h"
 #include "cpu/x86/cpu.h"
+#include "dos/psp.h"
 
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -39,10 +41,14 @@ class Dos {
 public:
   Dos(door86::cpu::x86::CPU* cpu);
   ~Dos() = default;
+  // Initializes the PSP and anything else needed before starting
+  // DS contains the PSP segment.
+  bool initialize_process(const std::filesystem::path& filename);
 
   void int20(int, door86::cpu::x86::CPU&);
   void int21(int, door86::cpu::x86::CPU&);
 
+  std::unique_ptr<PSP> psp_;
   DosMemoryManager mem_mgr;
   door86::cpu::x86::CPU* cpu_{nullptr};
 };

@@ -93,6 +93,7 @@ void CPU::execute_0x0(const instruction_t& inst) {
   case 0xE: push(core.sregs.cs); break;
   // 0x0F: POP CS
   case 0xF: core.sregs.cs = pop(); break;
+  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
   }
 }
 
@@ -209,6 +210,7 @@ void CPU::execute_0x1(const instruction_t& inst) {
       r -= 1;
     }
   } break;
+  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
   }
 }
 void CPU::execute_0x2(const instruction_t& inst) {
@@ -280,6 +282,7 @@ void CPU::execute_0x2(const instruction_t& inst) {
     auto r = r16(&core.regs.x.ax);
     r -= inst.operand16;
   } break;
+  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
   }
 }
 
@@ -316,9 +319,9 @@ void CPU::execute_0x3(const instruction_t& inst) {
   } break;
   // 38 /r CMP r/m8, r8
   case 0x8: {
-    auto rm = rmm8(inst);
-    const auto r = r8(inst);
-    rm.cmp(r);
+    const auto rm = rmm8(inst);
+    auto r = r8(inst);
+    r.cmp(rm.get());
   } break;
   // 39 /r CMP r/m16, r16
   case 0x9: {
@@ -348,6 +351,7 @@ void CPU::execute_0x3(const instruction_t& inst) {
     auto r = r16(&core.regs.x.ax);
     r.cmp(inst.operand16);
   } break;
+  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
   }
 }
 
@@ -401,6 +405,7 @@ void CPU::execute_0x6(const instruction_t& inst) {
   } break;
   case 0x8: push(inst.operand16); break;
   case 0xA: push(inst.operand8); break;
+  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
   }
 }
 
@@ -410,10 +415,10 @@ void CPU::execute_0x7(const instruction_t& inst) {
   case 0x0: cond = core.flags.oflag(); break;
   case 0x1: cond = !core.flags.oflag(); break;
   case 0x2: cond = core.flags.cflag(); break;
-  case 0x3: cond = !core.flags.oflag(); break;
+  case 0x3: cond = !core.flags.cflag(); break;
   case 0x4: cond = core.flags.zflag(); break;
   case 0x5: cond = !core.flags.zflag(); break;
-  case 0x6: cond = core.flags.cflag() && core.flags.zflag(); break;
+  case 0x6: cond = core.flags.cflag() || core.flags.zflag(); break;
   case 0x7: cond = !core.flags.cflag() && !core.flags.zflag(); break;
   case 0x8: cond = core.flags.sflag(); break;
   case 0x9: cond = !core.flags.sflag(); break;
@@ -421,11 +426,13 @@ void CPU::execute_0x7(const instruction_t& inst) {
   case 0xb: cond = !core.flags.pflag(); break;
   case 0xc: cond = core.flags.sflag() != core.flags.oflag(); break;
   case 0xd: cond = core.flags.sflag() == core.flags.oflag(); break;
-  case 0xe: cond = core.flags.zflag() && (core.flags.sflag() != core.flags.oflag()); break;
+  case 0xe: cond = core.flags.zflag() || (core.flags.sflag() != core.flags.oflag()); break;
   case 0xf: cond = !core.flags.zflag() && (core.flags.sflag() == core.flags.oflag()); break;
+  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
   }
   if (cond) {
-    core.ip += inst.operand8;
+    const int8_t rel8 = static_cast<int8_t>(inst.operand8);
+    core.ip += rel8;
   }
 }
 
@@ -662,6 +669,18 @@ void CPU::execute_0x8(const instruction_t& inst) {
     auto regmem8 = rmm8(inst);
     core.regs.h.set(inst.mdrm.reg, regmem8.get());
   } break;
+  // "8B/r":MOV r16,r/m16
+  case 0xB: {
+    auto rmm = rmm16(inst);
+    auto r = r16(inst);
+    r.set(rmm.get());
+  } break;
+  // 8C/r: MOV r/m16,Sreg**
+  case 0xC: {
+    auto rmm = rmm16(inst);
+    auto sreg = core.sregs.get(inst.mdrm.reg);
+    rmm.set(sreg);
+  } break;
   // "8D":"lea r16/32, m",
   case 0xD: {
     r16(inst).set(effective_address(inst, core));
@@ -672,6 +691,15 @@ void CPU::execute_0x8(const instruction_t& inst) {
     // actually segment per metadata
     r16(inst).set(regmem16.get());
   } break;
+  // POP r/m16
+  case 0xF: {
+    if (inst.mdrm.reg != 0) {
+      LOG(WARNING) << "Got 8F/N where N>0";
+    }
+    auto rm = rmm16(inst);
+    rm.set(pop());
+  } break;
+  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
   }
 }
 
@@ -688,6 +716,8 @@ void CPU::execute_0x9(const instruction_t& inst) {
     swap(left, right);
   }
   switch (inst.op & 0x0f) {
+  default: 
+    LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
   }
 }
 
@@ -695,8 +725,9 @@ void CPU::scas_m8(const instruction_t& inst) {
   const int16_t step = core.flags.dflag() ? -1 : 1;
   const auto b = memory.get<uint8_t>(core.sregs.es, core.regs.x.di);
   auto r = r8(&core.regs.h.al);
-  VLOG(2) << "SCAS: left: " << static_cast<int>(r.get()) << "; right: " << static_cast<int>(b);
   r.cmp(b);
+  VLOG(2) << "SCAS: left: " << static_cast<int>(r.get()) << "; right: " << static_cast<int>(b)
+          << "; ZF: " << core.flags.zflag();
   core.regs.x.di += step;
 }
 
@@ -704,8 +735,9 @@ void CPU::scas_m16(const instruction_t& inst) {
   const int16_t step = core.flags.dflag() ? -2 : 2;
   const auto b = memory.get<uint16_t>(core.sregs.es, core.regs.x.di);
   auto r = r16(&core.regs.x.ax);
-  VLOG(2) << "SCAS: left: " << r.get() << "; right: " << b;
   r.cmp(b);
+  VLOG(2) << "SCAS: left: " << static_cast<int>(r.get()) << "; right: " << static_cast<int>(b)
+          << "; ZF: " << core.flags.zflag();
   core.regs.x.di += step;
 }
 
@@ -713,7 +745,7 @@ void CPU::execute_0xA(const instruction_t& inst) {
   switch (inst.op & 0x0f) {
   case 0x0: {
     const auto seg = core.sregs.get(inst.seg_index());
-    // offset is inst.operand16
+    // offset is inst.operand8
     core.regs.h.al = memory.get<uint8_t>(seg, inst.operand8);
   } break;
   case 0x1: {
@@ -723,7 +755,7 @@ void CPU::execute_0xA(const instruction_t& inst) {
   } break;
   case 0x2: {
     const auto seg = core.sregs.get(inst.seg_index());
-    // offset is inst.operand16
+    // offset is inst.operand8
     memory.set<uint8_t>(seg, inst.operand8, core.regs.h.al);
   } break;
   //  mov [seg:off],ax
@@ -808,6 +840,7 @@ void CPU::execute_0xA(const instruction_t& inst) {
   case 0xE: scas_m8(inst); break;
   // SCAS m16
   case 0xF: scas_m16(inst); break;
+  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
   }
 }
 
@@ -838,7 +871,7 @@ void CPU::execute_0xC(const instruction_t& inst) {
   case 0x4: {
     const auto seg = core.sregs.get(inst.seg_index());
     core.regs.x.set(inst.mdrm.reg, memory.get<uint16_t>(seg, inst.operand16));
-    core.sregs.es = inst.mdrm.reg, memory.get<uint16_t>(seg, inst.operand16 + 2);
+    core.sregs.es = memory.get<uint16_t>(seg, inst.operand16 + 2);
   } break;
   // LDS r16,m16:16 - Load DS:r16 with far pointer from memory.
   // 
@@ -849,7 +882,7 @@ void CPU::execute_0xC(const instruction_t& inst) {
   case 0x5: {
     const auto seg = core.sregs.get(inst.seg_index());
     core.regs.x.set(inst.mdrm.reg, memory.get<uint16_t>(seg, inst.operand16));
-    core.sregs.ds = inst.mdrm.reg, memory.get<uint16_t>(seg, inst.operand16 + 2);
+    core.sregs.ds = memory.get<uint16_t>(seg, inst.operand16 + 2);
   } break;
   // MOV r/m8, imm8
   case 0x6: {
@@ -875,6 +908,7 @@ void CPU::execute_0xC(const instruction_t& inst) {
   // "CD":"int imm8",
   case 0xC: call_interrupt(0x03); break;
   case 0xD: call_interrupt(inst.operand8); break;
+  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
   }
 }
 
@@ -1009,6 +1043,7 @@ void CPU::execute_0xE(const instruction_t& inst) {
   case 0xE: io.outb(core.regs.x.dx, core.regs.h.al); break;
   // OUT AX, DX
   case 0xF: io.outw(core.regs.x.dx, core.regs.x.ax); break;
+  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
   }
 }
 
@@ -1112,20 +1147,21 @@ void CPU::execute_0xFF(const instruction_t& inst, int subop) {
   case 2: { // CALL
     // push the next IP onto the stack then jump ahead by the specified offset.
     push(core.ip);
-    core.ip = inst.operand16;
+    auto rm = rmm16(inst);
+    core.ip = rm.get();
   } break;
   // JMP r/m16
   case 4: {
-    core.ip = inst.operand16;
+    auto rm = rmm16(inst);
+    core.ip = rm.get();
   } break;
   // 5: JMP m16:16
-  // TODO(rushfan): Need an example of this.
-  // case 5: {
-  //  const auto current_seg = core.sregs.get(inst.seg_index());
-  //  const auto offset = memory.get<uint16_t>(seg, inst.operand16);
-  //  const auto seg = memory.get<uint16_t>(seg, inst.operand16 + 2);
-  //  core.ip = inst.operand16;
-  //} break;
+  case 5: {
+    // TODO(rushfan): Need an example of this. - This may not be right.
+    const auto seg = core.sregs.get(inst.seg_index());
+    core.ip = memory.get<uint16_t>(seg, inst.operand16);
+    core.sregs.cs = memory.get<uint16_t>(seg, inst.operand16 + 2);
+  } break;
   case 6: {
     const auto r = rmm16(inst);
     push(r.get());
@@ -1162,6 +1198,7 @@ void CPU::execute_0xF(const instruction_t& inst) {
   case 0xE: execute_0xFE(inst, inst.mdrm.reg); break;
   // INC r/m16
   case 0xF: execute_0xFF(inst, inst.mdrm.reg); break;
+  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
   }
 }
 
@@ -1192,21 +1229,15 @@ bool CPU::run() {
     const int pos = (core.sregs.cs * 0x10) + core.ip;
     const auto inst = decoder.decode(&memory[pos]);
     if (VLOG_IS_ON(2)) {
-      std::string rep;
-      if (inst.rep) {
-        rep = "[REP] ";
-      } else if (inst.repne) {
-        rep = "[REPNE] ";
-      }
-      if (inst.seg_override.has_value()) {
-        rep += fmt::format("[SO: {}] ", segment_names.at(static_cast<int>(inst.seg_index())));
-      }
-      const auto line = fmt::format("[{:04x}:{:04x}] {} inst: {:2X}/{}; size: {}", core.sregs.cs, core.ip,
-                                    rep, inst.op, inst.metadata.name, inst.len);
+      const auto line =
+          fmt::format("[{:04x}:{:04x}] {}", core.sregs.cs, core.ip, inst.DebugString());
       VLOG(2) << line;
     }
     core.ip += inst.len;
     execute(inst);
+    if (VLOG_IS_ON(2)) {
+      VLOG(2) << core.DebugString();
+    }
   }
   return true;
 }
@@ -1254,11 +1285,11 @@ bool CPU::execute(const instruction_t& inst) {
         done = !core.flags.zflag();
       }
     }
-    if (VLOG_IS_ON(2)) {
-      if (!done) {
-        VLOG(2) << "LOOP";
-      }
-    }
+    //if (VLOG_IS_ON(2)) {
+    //  if (!done) {
+    //    VLOG(2) << "LOOP";
+    //  }
+    //}
   } while (!done);
   return true;
 }

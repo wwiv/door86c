@@ -21,10 +21,11 @@ enum class segment_t : int8_t { ES = 0, CS, SS, DS, FS, GS };
 static std::vector<std::string> segment_names{"ES", "CS", "SS", "DS", "FS", "GS"};
 
 /** Structure representing a segmentted memory address */
+// when stored in memory, it's offset first, then segment.
 #pragma pack(push, 1)
 struct seg_address_t {
-  uint16_t seg;
   uint16_t off;
+  uint16_t seg;
 };
 #pragma pack(pop)
 
