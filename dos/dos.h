@@ -14,7 +14,7 @@ namespace door86::dos {
 
 class DosMemoryManager {
 public:
-  DosMemoryManager() : DosMemoryManager(0x0050, 0x07C0) {}
+  DosMemoryManager() : DosMemoryManager(0x0800, 0x9FC0) {}
   DosMemoryManager(uint16_t start_seg, uint16_t end_seg)
       : start_seg_(start_seg), end_seg_(end_seg), top_seg_(start_seg_) {}
   ~DosMemoryManager() = default;
@@ -24,9 +24,15 @@ public:
   void free(uint16_t seg);
 
 private:
-  uint16_t start_seg_{0x0050};
-  uint16_t end_seg_{0x07C0};
-  uint16_t top_seg_;
+  // See http://staff.ustc.edu.cn/~xyfeng/research/cos/resources/machine/mem.htm
+  // First free block after boot sector code (rounded to 0x100)
+  uint16_t start_seg_{0x0800};
+  // 9FC00- 9FFFF	extended BIOS data area (EBDA)
+  // 0xA000:0x0000	64 Kb	Graphics Video Memory
+  // but even this gives us >600K available.
+  // TODO(rushfan) Could we possibly move all the way up to 0xB800 or 0xB000)??
+  uint16_t end_seg_{0x9FC0};
+  uint16_t top_seg_{start_seg_};
 };
 
 class Dos {

@@ -2,6 +2,8 @@
 #define INCLUDED_CPU_MEMORY_BITS_H
 
 #include <cstdint>
+#include <string>
+#include <vector>
 
 #ifdef __GNUC__
 // Otherwise we're likely on MSVC which isn't (on arm or x86)
@@ -15,6 +17,8 @@ namespace door86::cpu {
 
 /** Enum representing the segments */
 enum class segment_t : int8_t { ES = 0, CS, SS, DS, FS, GS };
+
+static std::vector<std::string> segment_names{"ES", "CS", "SS", "DS", "FS", "GS"};
 
 /** Structure representing a segmentted memory address */
 #pragma pack(push, 1)

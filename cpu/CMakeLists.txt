@@ -12,7 +12,7 @@ add_library(cpu
   "x86/decoder.cpp"
   "x86/cpu.cpp"
   "x86/rmm.cpp"
-  )
+   "io.cpp")
 target_link_libraries(cpu PRIVATE fmt::fmt-header-only)
 target_compile_options(cpu PUBLIC /FAcs)
 

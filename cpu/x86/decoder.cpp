@@ -1,5 +1,6 @@
 #include "cpu/x86/decoder.h"
 
+#include "core/log.h"
 #include "fmt/format.h"
 #include <sstream>
 #include <string>
@@ -10,9 +11,9 @@ namespace door86::cpu::x86 {
 std::vector<op_code_data_t> create_opcode_metadata() {
   std::vector<op_code_data_t> v{
       // First Octet
-          {0x00, op_mask_modrm8, "ADD"},
+          {0x00, op_mask_modrm8, "ADD", 8},
           {0x01, op_mask_modrm16, "ADD"},
-          {0x02, op_mask_modrm8, "ADD"},
+          {0x02, op_mask_modrm8, "ADD", 8},
           {0x03, op_mask_modrm16, "ADD"},
           {0x04, op_mask_imm8, "ADD"},
           {0x05, op_mask_imm16, "ADD"},
@@ -121,14 +122,14 @@ std::vector<op_code_data_t> create_opcode_metadata() {
           {0x65, op_mask_notimpl, ""},
           {0x66, op_mask_notimpl, ""},
           {0x67, op_mask_notimpl, ""},
-          {0x68, op_mask_notimpl, ""},
+          {0x68, op_mask_imm16, "PUSH"},
           {0x69, op_mask_notimpl, ""},
-          {0x6a, op_mask_notimpl, ""},
+          {0x6a, op_mask_imm8, "PUSH"},
           {0x6b, op_mask_notimpl, ""},
-          {0x6c, op_mask_notimpl, ""},
-          {0x6d, op_mask_notimpl, ""},
-          {0x6e, op_mask_notimpl, ""},
-          {0x6f, op_mask_notimpl, ""},
+          {0x6c, op_mask_notimpl | uses_rep_zf, ""},
+          {0x6d, op_mask_notimpl | uses_rep_zf, ""},
+          {0x6e, op_mask_notimpl | uses_rep_zf, ""},
+          {0x6f, op_mask_notimpl | uses_rep_zf, ""},
 
           {0x70, op_mask_rel8, "JO"},
           {0x71, op_mask_rel8, "JNO"},
@@ -137,7 +138,7 @@ std::vector<op_code_data_t> create_opcode_metadata() {
           {0x74, op_mask_rel8, "JZ/JE"},
           {0x75, op_mask_rel8, "JNZ/JNE"},
           {0x76, op_mask_rel8, "JBE/JNA"},
-          {0x77, op_mask_rel8, "JA/op_mask_rel8"},
+          {0x77, op_mask_rel8, "JA/JNBE"},
           {0x78, op_mask_rel8, "JS"},
           {0x79, op_mask_rel8, "JNS"},
           {0x7a, op_mask_rel8, "JP/JPE"},
@@ -187,18 +188,18 @@ std::vector<op_code_data_t> create_opcode_metadata() {
           {0xA1, op_mask_imm16, "MOV", 16},
           {0xA2, op_mask_imm8, "MOV", 8},
           {0xA3, op_mask_imm16, "MOV", 16},
-          {0xA4, op_mask_notimpl, ""},
-          {0xA5, op_mask_notimpl, ""},
-          {0xA6, op_mask_notimpl, ""},
-          {0xA7, op_mask_notimpl, ""},
+          {0xA4, uses_rep_zf, "MOVS", 8},
+          {0xA5, uses_rep_zf, "MOVS", 16},
+          {0xA6, uses_rep_zf, "CMPS"},
+          {0xA7, uses_rep_zf, "CMPS"},
           {0xA8, op_mask_imm8, "TEST"},
           {0xA9, op_mask_imm16, "TEST"},
-          {0xAa, op_mask_notimpl, ""},
-          {0xAb, op_mask_notimpl, ""},
-          {0xAc, op_mask_notimpl, ""},
-          {0xAd, op_mask_notimpl, ""},
-          {0xAE, op_mask_none, "SCAS", 8},
-          {0xAF, op_mask_none, "SCAS", 16},
+          {0xAA, uses_rep_zf, "STOS", 8},
+          {0xAB, uses_rep_zf, "STOS", 16},
+          {0xAC, uses_rep_zf, "LODS", 8},
+          {0xAD, uses_rep_zf, "LODS", 16},
+          {0xAE, uses_rep_zf, "SCAS", 8},
+          {0xAF, uses_rep_zf, "SCAS", 16},
 
           // MOV with operand encoded in instruction
           {0xB0, op_mask_imm8, "MOV"},
@@ -244,31 +245,32 @@ std::vector<op_code_data_t> create_opcode_metadata() {
           {0xD5, op_mask_notimpl, ""},
           {0xD6, op_mask_notimpl, ""},
           {0xD7, op_mask_notimpl, ""},
-          {0xD8, op_mask_notimpl, ""},
-          {0xD9, op_mask_notimpl, ""},
-          {0xDa, op_mask_notimpl, ""},
-          {0xDb, op_mask_notimpl, ""},
-          {0xDc, op_mask_notimpl, ""},
-          {0xDd, op_mask_notimpl, ""},
-          {0xDe, op_mask_notimpl, ""},
-          {0xDf, op_mask_notimpl, ""},
+          // escape bytes (used for FPU)
+          {0xD8, op_mask_notimpl | op_mask_imm8, "ESC"},
+          {0xD9, op_mask_notimpl | op_mask_imm8, "ESC"},
+          {0xDa, op_mask_notimpl | op_mask_imm8, "ESC"},
+          {0xDb, op_mask_notimpl | op_mask_imm8, "ESC"},
+          {0xDc, op_mask_notimpl | op_mask_imm8, "ESC"},
+          {0xDd, op_mask_notimpl | op_mask_imm8, "ESC"},
+          {0xDe, op_mask_notimpl | op_mask_imm8, "ESC"},
+          {0xDf, op_mask_notimpl | op_mask_imm8, "ESC"},
 
           {0xE0, op_mask_notimpl, ""},
           {0xE1, op_mask_notimpl, ""},
           {0xE2, op_mask_notimpl, ""},
           {0xE3, op_mask_imm8, "JCXZ"},
-          {0xE4, op_mask_notimpl, ""},
-          {0xE5, op_mask_notimpl, ""},
-          {0xE6, op_mask_notimpl, ""},
-          {0xE7, op_mask_notimpl, ""},
+          {0xE4, op_mask_imm8, "IN"},
+          {0xE5, op_mask_imm8, "IN"},
+          {0xE6, op_mask_imm8, ""},
+          {0xE7, op_mask_imm8, ""},
           {0xE8, op_mask_imm16, "CALL", 16, op_enc_t::none},
           {0xE9, op_mask_imm16, "JMP", 16, op_enc_t::none},
           {0xEa, op_mask_notimpl, ""},
           {0xEB, op_mask_imm8, "JMP"},
-          {0xEc, op_mask_notimpl, ""},
-          {0xEd, op_mask_notimpl, ""},
-          {0xEe, op_mask_notimpl, ""},
-          {0xEf, op_mask_notimpl, ""},
+          {0xEC, op_mask_none, "IN"},
+          {0xED, op_mask_none, "IN"},
+          {0xEE, op_mask_none, "IN"},
+          {0xEF, op_mask_none, "IN"},
 
           {0xF0, op_mask_notimpl, ""},
           {0xF1, op_mask_notimpl, ""},
@@ -288,8 +290,13 @@ std::vector<op_code_data_t> create_opcode_metadata() {
           {0xFF, op_mask_modrm16, "0xFF/M"}
 };
 
-  v.at(0xAE).uses_rep_zf = true;
-  v.at(0xAF).uses_rep_zf = true;
+  // Fixup bits
+  for (auto& o : v) {
+    if ((o.mask & op_mask_imm8) || (o.mask & op_mask_rel8) || (o.mask & op_mask_modrm8)) {
+      VLOG(2) << "Let's fix 8-bit for: " << std::hex << o.op;
+      o.bits = 8;
+    }
+  }
   return v;
 }
 

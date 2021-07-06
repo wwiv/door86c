@@ -10,11 +10,11 @@ namespace door86::cpu::x86 {
 
 struct reg_mod_rm {
   // XX000000
-  uint8_t mod;
+  uint8_t mod{0};
   // 00XXX000
-  uint8_t reg;
+  uint8_t reg{0};
   // 00000XXX
-  uint8_t rm;
+  uint8_t rm{0};
 };
 
 constexpr uint32_t op_mask_none = 0x00;
@@ -37,6 +37,11 @@ constexpr uint32_t op_mask_modrm32 = 0x40;
 constexpr uint32_t op_mask_reg_is_sreg = 0x100;
 // uses a secondary opcode in the register
 constexpr uint32_t op_mask_so_opcode = 0x100;
+// Use ZF in rep for terminating the loop.
+constexpr uint32_t uses_rep_zf = 0x1000;
+
+// TODO(rushfan): Add metadata for (a) is multiplexed byte with reg, is rep_allowed, 
+
 // this one is not yet implemented
 constexpr uint32_t op_mask_notimpl = 0x80000000;
 
@@ -48,21 +53,16 @@ struct op_code_data_t {
   std::string name;
   int bits{16}; // 8, 16, etc/
   op_enc_t op_enc{op_enc_t::rm_r};
-
-  // Other bits to set manually.
-
-  //  Does this instruction use thr ZF flag to terminate a REP/REPNE?
-  bool uses_rep_zf{false};
 };
 
 class instruction_t {
 public:
-  uint8_t op;
+  uint8_t op{0};
   reg_mod_rm mdrm;
-  uint8_t operand8;
-  uint16_t operand16;
+  uint8_t operand8{0};
+  uint16_t operand16{0};
   int len{0};
-  op_code_data_t metadata;
+  op_code_data_t metadata{};
 
   // methods.
   bool has_modrm() const;

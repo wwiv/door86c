@@ -1,6 +1,7 @@
 #ifndef INCLUDED_CPU_X86_CPU_H
 #define INCLUDED_CPU_X86_CPU_H
 
+#include "cpu/io.h"
 #include "cpu/memory.h"
 #include "cpu/x86/cpu_core.h"
 #include "cpu/x86/decoder.h"
@@ -45,6 +46,10 @@ public:
   void execute_0x6(const instruction_t& inst);
   void execute_0x7(const instruction_t& inst);
   void execute_0x8(const instruction_t& inst);
+  void execute_0x80(const instruction_t& inst, int subop);
+  void execute_0x81(const instruction_t& inst, int subop);
+  void execute_0x82(const instruction_t& inst, int subop);
+  void execute_0x83(const instruction_t& inst, int subop);
   void execute_0x9(const instruction_t& inst);
   void execute_0xA(const instruction_t& inst);
   void execute_0xB(const instruction_t& inst);
@@ -100,7 +105,7 @@ public:
   cpu_core core;
   Decoder decoder;
   Memory memory;
-
+  IO io;
 
   // Helpers
 private:
@@ -111,6 +116,11 @@ private:
   Rmm<RmmType::REGISTER, uint16_t> r16(uint16_t* reg);
   Rmm<RmmType::EITHER, uint8_t> rmm8(const instruction_t& inst);
   Rmm<RmmType::EITHER, uint16_t> rmm16(const instruction_t& inst);
+
+  //  memory only
+
+  Rmm<RmmType::MEMORY, uint8_t> mem8(uint16_t seg, uint16_t offset);
+  Rmm<RmmType::MEMORY, uint16_t> mem16(uint16_t seg, uint16_t offset);
 
   bool running_{true};
   // default interrupt handlers.  default means it's not been overridden
