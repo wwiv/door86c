@@ -51,6 +51,17 @@ public:
   std::unique_ptr<PSP> psp_;
   DosMemoryManager mem_mgr;
   door86::cpu::x86::CPU* cpu_{nullptr};
+
+private:
+  void getversion();
+  void get_interrupt_vector();
+  void set_interrupt_vector();
+
+  // IO
+
+  void display_char();
+  void display_string();
+  void get_char();
 };
 
 /*

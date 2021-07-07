@@ -95,9 +95,8 @@ bool Dos::initialize_process(const std::filesystem::path& filename) {
   return true;
 }
 
-
 // allocate a block of memory of size bytes, returns the starting segment;
-std::optional<uint16_t> DosMemoryManager::allocate(size_t size) { 
+std::optional<uint16_t> DosMemoryManager::allocate(size_t size) {
   const auto segs_needed = static_cast<uint16_t>(1 + (size / 16));
   if ((end_seg_ - start_seg_) < segs_needed) {
     // not enough memory.
@@ -110,9 +109,8 @@ std::optional<uint16_t> DosMemoryManager::allocate(size_t size) {
 }
 
 void DosMemoryManager::free(uint16_t seg) {
-  //TODO(rushfan): Implement free
+  // TODO(rushfan): Implement free
 }
-
 
 Dos::Dos(door86::cpu::x86::CPU* cpu) : cpu_(cpu) {
   cpu_->int_handlers().try_emplace(
@@ -131,60 +129,74 @@ void Dos::int20(int, door86::cpu::x86::CPU& cpu) { cpu_->halt(); }
 
 void Dos::int21(int, door86::cpu::x86::CPU& cpu) {
   LOG(INFO) << fmt::format("[{:04x}:{:04x}] DOS Interrupt: 0x{:04x}; {:02X}", cpu_->core.sregs.cs,
-                           cpu_->core.ip, cpu_->core.regs.x.ax, static_cast<int>(cpu_->core.regs.h.ah));
+                           cpu_->core.ip, cpu_->core.regs.x.ax,
+                           static_cast<int>(cpu_->core.regs.h.ah));
   switch (cpu_->core.regs.h.ah) {
   // terminate app
   case 0x00: cpu_->halt(); break;
   // read char
-  case 0x01: {
-    // TODO(rushfan): Need to do break checking, etc.
-    cpu_->core.regs.h.al = static_cast<uint8_t>(fgetc(stdin));
-  } break;
+  case 0x01: get_char(); break;
   // display char
-  case 0x02: fputc(cpu_->core.regs.h.dl, stdout); break;
+  case 0x02: display_char(); break;
   // display string
-  case 0x9: {
-    for (auto offset = cpu_->core.regs.x.dx;; ++offset) {
-      const auto m = cpu_->memory.get<uint8_t>(cpu_->core.sregs.ds, offset);
-      if (m == '$' || m == '\0') {
-        // TODO(rushfan): We shouldn't stop at \0, but we will for now.
-        break;
-      }
-      fputc(m, stdout);
-    }
-  } break;
+  case 0x9: display_string(); break;
   // INT 21 - AH = 25h DOS - SET INTERRUPT VECTOR
-  case 0x25: {
-    const auto s = fmt::format("{:04X}:{:04X}", cpu_->core.sregs.ds, cpu_->core.regs.x.dx);
-    LOG(INFO) << "Set Dos Interrupt for: " << static_cast<int>(cpu_->core.regs.h.al) << "; " << s;
-  } break;
+  case 0x25: set_interrupt_vector(); break;
   // INT 21 - DOS 2+ - GET DOS VERSION
-  case 0x30:
-    VLOG(2) << "Get DOS Version";
-    cpu_->core.regs.x.ax = 0x0005;
-    cpu_->core.regs.x.bx = 0x0000;
-    cpu_->core.regs.x.cx = 0x0000;
-    break;
+  case 0x30: getversion(); break;
   // Get Interrupt Vector
-  case 0x35: {
-    VLOG(2) << "Get Interrupt Vector for: " << fmt::format("{:02X}", cpu_->core.regs.h.al);
-    // TODO(rushfan): HACK
-    cpu_->memory[(cpu_->core.sregs.es * 0x10) + cpu_->core.regs.x.bx] = cpu_->core.regs.h.al;
-    // segment is 0
-    cpu_->memory[(cpu_->core.sregs.es * 0x10) + cpu_->core.regs.x.bx + 2] = 0;
-  } break;
+  case 0x35: get_interrupt_vector(); break;
   // terminate app.
-  case 0x4c: 
+  case 0x4c:
     VLOG(2) << "Terminate App";
-    cpu_->halt(); 
+    cpu_->halt();
     break;
   default: {
     // unhandled
-    VLOG(2) << "Unhandled DOS Interrupt "<< fmt::format("AH: {:02X}; AL: {:02X}", cpu_->core.regs.h.ah, cpu_->core.regs.h.al);
+    VLOG(2) << "Unhandled DOS Interrupt "
+            << fmt::format("AH:{:02X}; AL:{:02X}", cpu_->core.regs.h.ah, cpu_->core.regs.h.al);
   } break;
   }
 }
 
-
+void Dos::getversion() {
+  VLOG(2) << "Get DOS Version";
+  cpu_->core.regs.x.ax = 0x0005;
+  cpu_->core.regs.x.bx = 0x0000;
+  cpu_->core.regs.x.cx = 0x0000;
 }
 
+void Dos::get_interrupt_vector() {
+  const uint8_t v = cpu_->core.regs.h.al;
+  uint16_t off = cpu_->memory.get<uint16_t>(0, v * 4);
+  uint16_t seg = cpu_->memory.get<uint16_t>(0, (v * 4) + 2);
+  VLOG(2) << fmt::format("Get Interrupt Vector for: {:02X} -> {:04X}{:04X}", v, seg, off);
+  cpu_->memory.set<uint16_t>(cpu_->core.sregs.es, cpu_->core.regs.x.bx, off);
+  cpu_->memory.set<uint16_t>(cpu_->core.sregs.es, cpu_->core.regs.x.bx + 2, seg);
+}
+
+void Dos::set_interrupt_vector() {
+  auto v = cpu_->core.regs.h.ah;
+  auto off = cpu_->memory.get<uint16_t>(cpu_->core.sregs.ds, cpu_->core.regs.x.dx);
+  auto seg = cpu_->memory.get<uint16_t>(cpu_->core.sregs.ds, cpu_->core.regs.x.dx + 2);
+
+  cpu_->memory.set<uint16_t>(0, v * 4, off);
+  cpu_->memory.set<uint16_t>(0, (v * 4) + 2, seg);
+}
+
+void Dos::display_char() { fputc(cpu_->core.regs.h.dl, stdout); }
+
+void Dos::display_string() {
+  for (auto offset = cpu_->core.regs.x.dx;; ++offset) {
+    const auto m = cpu_->memory.get<uint8_t>(cpu_->core.sregs.ds, offset);
+    if (m == '$' || m == '\0') {
+      // TODO(rushfan): We shouldn't stop at \0, but we will for now.
+      break;
+    }
+    fputc(m, stdout);
+  }
+}
+
+void Dos::get_char() { cpu_->core.regs.h.al = static_cast<uint8_t>(fgetc(stdin)); }
+
+} // namespace door86::dos

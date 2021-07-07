@@ -93,7 +93,9 @@ void CPU::execute_0x0(const instruction_t& inst) {
   case 0xE: push(core.sregs.cs); break;
   // 0x0F: POP CS
   case 0xF: core.sregs.cs = pop(); break;
-  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
+  default:
+    LOG(WARNING) << fmt::format("Skipped OPCODE: 0x{:02x}", static_cast<int>(inst.op));
+    break;
   }
 }
 
@@ -210,7 +212,7 @@ void CPU::execute_0x1(const instruction_t& inst) {
       r -= 1;
     }
   } break;
-  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
+  default: LOG(WARNING) << fmt::format("Skipped OPCODE: 0x{:02x}", static_cast<int>(inst.op)); break;
   }
 }
 void CPU::execute_0x2(const instruction_t& inst) {
@@ -282,7 +284,9 @@ void CPU::execute_0x2(const instruction_t& inst) {
     auto r = r16(&core.regs.x.ax);
     r -= inst.operand16;
   } break;
-  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
+  default:
+    LOG(WARNING) << fmt::format("Skipped OPCODE: 0x{:02x}", static_cast<int>(inst.op));
+    break;
   }
 }
 
@@ -351,7 +355,9 @@ void CPU::execute_0x3(const instruction_t& inst) {
     auto r = r16(&core.regs.x.ax);
     r.cmp(inst.operand16);
   } break;
-  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
+  default:
+    LOG(WARNING) << fmt::format("Skipped OPCODE: 0x{:02x}", static_cast<int>(inst.op));
+    break;
   }
 }
 
@@ -405,7 +411,9 @@ void CPU::execute_0x6(const instruction_t& inst) {
   } break;
   case 0x8: push(inst.operand16); break;
   case 0xA: push(inst.operand8); break;
-  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
+  default:
+    LOG(WARNING) << fmt::format("Skipped OPCODE: 0x{:02x}", static_cast<int>(inst.op));
+    break;
   }
 }
 
@@ -428,7 +436,9 @@ void CPU::execute_0x7(const instruction_t& inst) {
   case 0xd: cond = core.flags.sflag() == core.flags.oflag(); break;
   case 0xe: cond = core.flags.zflag() || (core.flags.sflag() != core.flags.oflag()); break;
   case 0xf: cond = !core.flags.zflag() && (core.flags.sflag() == core.flags.oflag()); break;
-  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
+  default:
+    LOG(WARNING) << fmt::format("Skipped OPCODE: 0x{:02x}", static_cast<int>(inst.op));
+    break;
   }
   if (cond) {
     const int8_t rel8 = static_cast<int8_t>(inst.operand8);
@@ -699,7 +709,9 @@ void CPU::execute_0x8(const instruction_t& inst) {
     auto rm = rmm16(inst);
     rm.set(pop());
   } break;
-  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
+  default:
+    LOG(WARNING) << fmt::format("Skipped OPCODE: 0x{:02x}", static_cast<int>(inst.op));
+    break;
   }
 }
 
@@ -714,10 +726,12 @@ void CPU::execute_0x9(const instruction_t& inst) {
     auto left = r16(last);
     auto right = r16(0);
     swap(left, right);
-  }
+    return;
+  } 
   switch (inst.op & 0x0f) {
-  default: 
-    LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
+  default:
+    LOG(WARNING) << fmt::format("Skipped OPCODE: 0x{:02x}", static_cast<int>(inst.op));
+    break;
   }
 }
 
@@ -908,7 +922,7 @@ void CPU::execute_0xC(const instruction_t& inst) {
   // "CD":"int imm8",
   case 0xC: call_interrupt(0x03); break;
   case 0xD: call_interrupt(inst.operand8); break;
-  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
+  default: LOG(WARNING) << fmt::format("Skipped OPCODE: 0x{:02x}", static_cast<int>(inst.op));
   }
 }
 
@@ -1011,6 +1025,24 @@ void CPU::execute_0xD(const instruction_t& inst) {
 
 void CPU::execute_0xE(const instruction_t& inst) {
   switch (inst.op & 0x0f) {
+  // LOOPNE rel8
+  case 0x0: {
+    if (core.regs.x.cx-- == 0 && !core.flags.zflag()) {
+      core.ip += inst.operand8;
+    }
+  } break;
+  // LOOPE rel8
+  case 0x1: {
+    if (core.regs.x.cx-- == 0 && core.flags.zflag()) {
+      core.ip += inst.operand8;
+    }
+  } break;
+  // LOOP rel8
+  case 0x2: {
+    if (core.regs.x.cx-- == 0) {
+      core.ip += inst.operand8;
+    }
+  } break;
   // Jump short if eCX register is 0
   case 0x3: {
     if (core.regs.x.cx == 0) {
@@ -1029,12 +1061,12 @@ void CPU::execute_0xE(const instruction_t& inst) {
   case 0x8: {
     // push the next IP onto the stack then jump ahead by the specified offset.
     push(core.ip);
-    core.ip += inst.operand16;
+    core.ip += static_cast<int16_t>(inst.operand16);
   } break;
   // JMP rel16
-  case 0x9: core.ip += inst.operand16; break;
+  case 0x9: core.ip += static_cast<int16_t>(inst.operand16); break;
   // JMP rel8
-  case 0xB: core.ip += inst.operand8; break;
+  case 0xB: core.ip += static_cast<int8_t>(inst.operand8); break;
   // IN AL, DX
   case 0xC: core.regs.h.al = io.inb(core.regs.x.dx); break;
   // IN AX, DX
@@ -1043,7 +1075,7 @@ void CPU::execute_0xE(const instruction_t& inst) {
   case 0xE: io.outb(core.regs.x.dx, core.regs.h.al); break;
   // OUT AX, DX
   case 0xF: io.outw(core.regs.x.dx, core.regs.x.ax); break;
-  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
+  default: LOG(WARNING) << fmt::format("Skipped OPCODE: 0x{:02x}", static_cast<int>(inst.op));
   }
 }
 
@@ -1198,7 +1230,7 @@ void CPU::execute_0xF(const instruction_t& inst) {
   case 0xE: execute_0xFE(inst, inst.mdrm.reg); break;
   // INC r/m16
   case 0xF: execute_0xFF(inst, inst.mdrm.reg); break;
-  default: LOG(WARNING) << "Skipped OPCODE: " << std::hex << inst.op; break;
+  default: LOG(WARNING) << fmt::format("Skipped OPCODE: 0x{:02x}", static_cast<int>(inst.op));
   }
 }
 
@@ -1237,6 +1269,7 @@ bool CPU::run() {
     execute(inst);
     if (VLOG_IS_ON(2)) {
       VLOG(2) << core.DebugString();
+      std::cerr << std::endl;
     }
   }
   return true;
@@ -1244,7 +1277,8 @@ bool CPU::run() {
 
 bool CPU::execute(const instruction_t& inst) {
   if (inst.metadata.mask & op_mask_notimpl) {
-    LOG(WARNING) << "Unimplemented Opcode Encountered: " << std::hex << static_cast<uint16_t>(inst.op);
+    LOG(WARNING) << fmt::format("Unimplemented Opcode Encountered: {:02X} at IP: {:02X}",
+      static_cast<uint16_t>(inst.op), core.ip - 1);
     return false;
   }
   bool done = true;
