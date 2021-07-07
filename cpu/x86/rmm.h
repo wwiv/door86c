@@ -71,6 +71,11 @@ public:
     set_flags_psz(cur);
   }
 
+  inline void clear_flags_coa() { 
+    uint16_t f = CF | OF | AF;
+    core_->flags.clear(f);
+  }
+
   inline void set_flags_psz(const T& cur) {
     core_->flags.pflag((kern_popcount(cur) % 2) == 0);
     core_->flags.zflag(cur == 0);
@@ -136,6 +141,7 @@ public:
   inline Rmm& operator|=(const T& other) {
     T cur = get();
     cur |= other;
+    clear_flags_coa();
     set_flags_psz(cur);
     set(cur);
     return *this;
@@ -147,6 +153,7 @@ public:
   inline Rmm& operator^=(const T& other) {
     T cur = get();
     cur ^= other;
+    clear_flags_coa();
     set_flags_psz(cur);
     set(cur);
     return *this;
@@ -160,6 +167,7 @@ public:
   inline Rmm& operator&=(const T& other) {
     T cur = get();
     cur &= other;
+    clear_flags_coa();
     set_flags_psz(cur);
     set(cur);
     return *this;

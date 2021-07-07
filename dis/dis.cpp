@@ -7,12 +7,15 @@
 #include <vector>
 #include "core/log.h"
 #include "core/command_line.h"
+#include "core/file.h"
 #include "core/scope_exit.h"
 #include "core/version.h"
+#include "cpu/x86/decoder.h"
 #include "dos/exe.h"
 #include "fmt/format.h"
 
 using namespace wwiv::core;
+using namespace door86::cpu::x86;
 using namespace door86::dos;
 
 
@@ -55,7 +58,7 @@ void dump_exe_info(const Exe& exe) {
   }
 }
 
-static void disasm(const std::filesystem::path& filepath, int code_offset, const std::string& format) { 
+static void disasm_hex(const std::filesystem::path& filepath, int code_offset) { 
   bool done{false};
   FILE* fp = nullptr;
   if (fp = fopen(filepath.string().c_str(), "rb"); !fp) {
@@ -73,7 +76,7 @@ static void disasm(const std::filesystem::path& filepath, int code_offset, const
     std::string line2;
     line2.reserve(100);
     int curline = 0;
-    for (auto i = 0; i < num_read; i++) {
+    for (size_t i = 0; i < num_read; i++) {
       const uint8_t ch = static_cast<uint8_t>(buf[i]);
       line1.append(fmt::format("{:02X} ", ch));
       line2.push_back((ch >= 32 && ch <= 127) ? static_cast<char>(ch) : '.');
@@ -94,6 +97,44 @@ static void disasm(const std::filesystem::path& filepath, int code_offset, const
   }
 }
 
+static void disasm_code(const std::filesystem::path& filepath, int code_offset) {
+  File f(filepath);
+  const auto len = f.length();
+  if (len <= 0) {
+    LOG(WARNING) << "Failed to get size of file: " << filepath;
+    return;
+  }
+
+  std::vector<uint8_t> ops;
+  ops.resize(len);
+  if (!f.Open(File::modeBinary | File::modeReadOnly)) {
+    LOG(WARNING) << "Failed to open file: " << filepath;
+    return;
+  }
+  const auto num_read = f.Read(&ops[0], len);
+  if (num_read != len) {
+    LOG(WARNING) << "Failed to read all bytes from file: " << filepath;
+    return;
+  }
+  ops.resize(num_read);
+
+  int pos = code_offset;
+  Decoder decoder;
+  while (pos < num_read) {
+    auto inst = decoder.decode(&ops[pos]);
+    fmt::print("{:08x} {}\r\n", pos, inst.DebugString());
+    pos += inst.len;
+  }
+}
+
+static void disasm(const std::filesystem::path& filepath, int code_offset,
+                   const std::string& format) {
+  if (format == "hex") {
+    disasm_hex(filepath, code_offset);
+  } else {
+    disasm_code(filepath, code_offset);
+  }
+}
 
 int main(int argc, char** argv) {
   LoggerConfig config;

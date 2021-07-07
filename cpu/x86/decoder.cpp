@@ -532,21 +532,53 @@ std::string Decoder::to_string(const instruction_t& i) {
 Decoder::Decoder() : op_data_(create_opcode_metadata()) {}
 
 std::string instruction_t::DebugString() const {
+  static std::vector<char*> reg16 = {"AX", "CX", "DX", "BX", "SP", "BP", "SI", "DI"};
+  static std::vector<char*> reg8 = {"AL", "CL", "DL", "BL", "AH", "CH", "DH", "BH"};
+
   std::string rs;
   if (rep) {
-    rs = "[REP] ";
+    rs = "[REP]";
   } else if (repne) {
-    rs = "[REPNE] ";
+    rs = "[REPNE]";
   }
   if (seg_override.has_value()) {
-    rs += fmt::format("[SO: {}] ", segment_names.at(static_cast<int>(seg_index())));
+    rs += fmt::format("[SO:{}]", segment_names.at(static_cast<int>(seg_index())));
   }
+  std::string r;
+  std::string imm;
   auto name = metadata.name;
   if (metadata.mask & uses_reg_subcode) {
     name.push_back('/');
     name.push_back('0' + mdrm.reg);
   }
-  const auto line = fmt::format("{} inst: {:2X}/{}; size: {}", rs, op, name, len);
+  if (has_modrm()) {
+    if (has_modrm_register_value(mdrm)) {
+      r = metadata.bits == 8 ? fmt::format(" r:{}", reg8[mdrm.reg])
+                             : fmt::format(" r:{}", reg16[mdrm.reg]);
+      if (metadata.mask & op_mask_reg_is_sreg) {
+        r = fmt::format(" r:{}", segment_names.at(mdrm.reg));
+      }
+    } else if (metadata.mask & op_mask_reg_is_sreg) {
+      r = fmt::format(" r:{}", rmreg_sreg_to_string(mdrm.reg));
+    } else {
+      if (metadata.bits == 8) {
+        r = fmt::format(" r:{}", rmreg8_to_string(mdrm.reg));
+      } else {
+        r = fmt::format(" r:{}", rmreg16_to_string(mdrm.reg));
+      }
+    }
+    if ((mdrm.rm == 0x06 && mdrm.mod == 0) || mdrm.mod == 0x02) {
+      imm = fmt::format(" imm:{:04X}, ", operand16);
+    } else if (mdrm.mod == 0x01) {
+      imm = fmt::format(" imm:{:02X}, ", operand8);
+    }
+  }
+  if (metadata.mask & op_mask_imm8) {
+    imm = fmt::format(" imm:{:02X}, ", operand8);
+  } else if (metadata.mask & op_mask_imm16) {
+    imm = fmt::format(" imm:{:04X}, ", operand16);
+  }
+  const auto line = fmt::format("[len:{}]{} 0x{:02X}/{}{}{}", len, rs, op, name, r, imm);
   return line;
 }
 

@@ -161,7 +161,7 @@ void Dos::int21(int, door86::cpu::x86::CPU& cpu) {
   // INT 21 - DOS 2+ - GET DOS VERSION
   case 0x30:
     VLOG(2) << "Get DOS Version";
-    cpu_->core.regs.x.ax = 0x0050;
+    cpu_->core.regs.x.ax = 0x0005;
     cpu_->core.regs.x.bx = 0x0000;
     cpu_->core.regs.x.cx = 0x0000;
     break;

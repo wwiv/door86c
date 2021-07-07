@@ -630,7 +630,7 @@ void CPU::execute_0x8(const instruction_t& inst) {
     const auto saved_rmm = rmm.get();
     auto r = r8(inst);
     rmm &= r;
-    rmm.set(r.get());
+    rmm.set(saved_rmm);
   } break;
   // 0x85 /r: TEST r/m16, r16
   case 0x5: {
@@ -638,7 +638,7 @@ void CPU::execute_0x8(const instruction_t& inst) {
     const auto saved_rmm = rmm.get();
     auto r = r16(inst);
     rmm &= r;
-    rmm.set(r.get());
+    rmm.set(saved_rmm);
   } break;
   // XCHG r8, r/m8
   case 0x6: {
@@ -1230,7 +1230,7 @@ bool CPU::run() {
     const auto inst = decoder.decode(&memory[pos]);
     if (VLOG_IS_ON(2)) {
       const auto line =
-          fmt::format("[{:04x}:{:04x}] {}", core.sregs.cs, core.ip, inst.DebugString());
+          fmt::format("[{:04x}:{:04x}] inst: {}", core.sregs.cs, core.ip, inst.DebugString());
       VLOG(2) << line;
     }
     core.ip += inst.len;
