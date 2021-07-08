@@ -1,6 +1,7 @@
 #include "cpu/x86/decoder.h"
 
 #include "core/log.h"
+#include "fmt/ranges.h"
 #include "fmt/format.h"
 #include <sstream>
 #include <string>
@@ -359,35 +360,43 @@ instruction_t Decoder::decode(const std::vector<uint8_t> o) { return decode(o.da
 instruction_t Decoder::decode(const uint8_t* o) {
   instruction_t i;
   // TODO(rushfan): add in prefix bytes here.
+  i.bytes.push_back(*o);
   const auto first_byte = *o++;
   ++i.len;
 
   if (first_byte == 0x2e) {
     i.seg_override = segment_t::CS;
+    i.bytes.push_back(*o);
     i.op = *o++;
     ++i.len;
   } else if (first_byte == 0x36) {
     i.seg_override = segment_t::SS;
+    i.bytes.push_back(*o);
     i.op = *o++;
     ++i.len;
   } else if (first_byte == 0x3E) {
     i.seg_override = segment_t::DS;
     ++i.len;
+    i.bytes.push_back(*o);
     i.op = *o++;
   } else if (first_byte == 0x26) {
     i.seg_override = segment_t::ES;
+    i.bytes.push_back(*o);
     i.op = *o++;
     ++i.len;
   } else if (first_byte == 0xf0) {
     i.lock = true;
+    i.bytes.push_back(*o);
     i.op = *o++;
     ++i.len;
   } else if (first_byte == 0xf2) {
     i.repne = true;
+    i.bytes.push_back(*o);
     i.op = *o++;
     ++i.len;
   } else if (first_byte == 0xf3) {
     i.rep = true;
+    i.bytes.push_back(*o);
     i.op = *o++;
     ++i.len;
   } else {
@@ -397,15 +406,19 @@ instruction_t Decoder::decode(const uint8_t* o) {
   i.metadata = op_data_[i.op];
   if (has_modrm(i.metadata.mask)) {
     ++i.len;
+    i.bytes.push_back(*o);
     i.mdrm = parse_modrm(*o++);
     if ((i.mdrm.rm == 0x06 && i.mdrm.mod == 0) || i.mdrm.mod == 0x02) {
       i.len += 2;
       // disp16
+      i.bytes.push_back(*o);
       auto lsb = *o++;
+      i.bytes.push_back(*o);
       auto msb = *o++;
       i.operand16 = (msb << 8) | lsb;
     } else if (i.mdrm.mod == 0x01) {
       i.len++;
+      i.bytes.push_back(*o);
       i.operand8 = *o++;
     }
   }
@@ -413,10 +426,13 @@ instruction_t Decoder::decode(const uint8_t* o) {
   // modrm bytes
   if (i.metadata.mask & op_mask_imm8) {
     i.len++;
+    i.bytes.push_back(*o);
     i.operand8 = *o++;
   } else if (i.metadata.mask & op_mask_imm16) {
     i.len += 2;
+    i.bytes.push_back(*o);
     auto lsb = *o++;
+    i.bytes.push_back(*o);
     auto msb = *o++;
     i.operand16 = (msb << 8) | lsb;
   }
@@ -529,7 +545,7 @@ std::string Decoder::to_string(const instruction_t& i) {
   return ss.str();
 }
 
-Decoder::Decoder() : op_data_(create_opcode_metadata()) {}
+Decoder::Decoder(bool save_bytes) : op_data_(create_opcode_metadata()), save_bytes_(save_bytes) {}
 
 std::string instruction_t::DebugString() const {
   static std::vector<char*> reg16 = {"AX", "CX", "DX", "BX", "SP", "BP", "SI", "DI"};
@@ -550,6 +566,10 @@ std::string instruction_t::DebugString() const {
   if (metadata.mask & uses_reg_subcode) {
     name.push_back('/');
     name.push_back('0' + mdrm.reg);
+  }
+  std::string bs;
+  if (!bytes.empty()) {
+    bs = fmt::format("{:02X}", fmt::join(bytes, ""));
   }
   if (has_modrm()) {
     if (has_modrm_register_value(mdrm)) {
@@ -578,7 +598,7 @@ std::string instruction_t::DebugString() const {
   } else if (metadata.mask & op_mask_imm16) {
     imm = fmt::format(" imm:{:04X}, ", operand16);
   }
-  const auto line = fmt::format("[len:{}]{} 0x{:02X}/{}{}{}", len, rs, op, name, r, imm);
+  const auto line = fmt::format("{:10} [len:{}]{} 0x{:02X}/{}{}{}", bs, len, rs, op, name, r, imm);
   return line;
 }
 

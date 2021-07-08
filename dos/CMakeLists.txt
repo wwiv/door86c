@@ -6,10 +6,13 @@ include(GoogleTest)
 add_library(dos 
   "exe.cpp"
   "psp.cpp"
-   "dos.cpp")
+  "dos.cpp"
+)
 target_link_libraries(dos PRIVATE fmt::fmt-header-only)
 
 add_executable(dos_tests 
+ "dos_test.cpp"
+ "dos_memmgr_test.cpp"
  "psp_test.cpp"
  )
 target_link_libraries(dos_tests cpu dos GTest::gtest_main)

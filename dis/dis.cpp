@@ -120,10 +120,12 @@ static void disasm_code(const std::filesystem::path& filepath, int code_offset) 
 
   int pos = code_offset;
   Decoder decoder;
+  auto off = 0;
   while (pos < num_read) {
     auto inst = decoder.decode(&ops[pos]);
-    fmt::print("{:08x} {}\r\n", pos, inst.DebugString());
+    fmt::print("{:08x} {}\n", off, inst.DebugString());
     pos += inst.len;
+    off += inst.len;
   }
 }
 

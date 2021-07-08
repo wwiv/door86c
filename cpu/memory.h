@@ -1,6 +1,7 @@
 #ifndef INCLUDED_CPU_MEMORY_H
 #define INCLUDED_CPU_MEMORY_H
 
+#include "core/log.h"
 #include "cpu/memory_bits.h"
 #include <cstdint>
 #include <string>
@@ -56,6 +57,24 @@ public:
   bool load_image(size_t start, size_t size, const uint8_t* image);
   // loads an image of size (size) into memory starting at segmented location start
   bool load_image(const seg_address_t& start, size_t size, const uint8_t* image);
+
+  // Templatized memory access
+
+  // Gets a pointer to a memory location.
+  template <class T> T* ptr(uint16_t seg, uint16_t off) const {
+    const auto loc = abs_memory(seg, off);
+    CHECK_LE(loc + sizeof(T), size_);
+    return reinterpret_cast<T*>(mem_ + loc);
+  }
+
+  // Gets a pointer to a memory location and zeros out the block.
+  template <class T> T* ptr_zero(uint16_t seg, uint16_t off) const {
+    const auto loc = abs_memory(seg, off);
+    CHECK_LE(loc + sizeof(T), size_);
+    auto* p reinterpret_cast<T*>(mem_ + loc);
+    memset(p, '\0', sizeof(T));
+    return p;
+  }
 
   // Helpers for testing
 

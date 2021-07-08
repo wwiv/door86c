@@ -74,10 +74,14 @@ public:
   std::string DebugString() const;
 
   // prefix instructions
+  // TODO(rushfan: merge rep and repne and set direction
+
   std::optional<segment_t> seg_override;
   bool lock{false};
   bool rep{false};
   bool repne{false};
+
+  std::vector<uint8_t> bytes;
 };
 
 reg_mod_rm parse_modrm(uint8_t b);
@@ -94,7 +98,8 @@ std::string to_string(const instruction_t&);
 
 class Decoder {
 public:
-  Decoder();
+  Decoder() : Decoder(true) {}
+  explicit Decoder(bool save_bytes);
   ~Decoder() = default;
 
   /** Fetches the next instruction from the bytestream at o */
@@ -108,6 +113,8 @@ public:
 private:
   // Op list. Visible for testing.
   std::vector<op_code_data_t> op_data_;
+  // should the decoder add bytes to the instruction
+  bool save_bytes_{true};
 };
 
 } // namespace door86::cpu::x86

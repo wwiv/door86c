@@ -14,18 +14,41 @@
 
 namespace door86::dos {
 
+enum class memory_avail_t { free, used, system };
+struct memory_block {
+  // segment start
+  uint16_t start;
+  // number of 16-byte paragraphs
+  uint16_t size;
+  // owner segment (should be start +1)
+  uint16_t owner;
+  // Available?
+  memory_avail_t avail{memory_avail_t ::free};
+};
+
 class DosMemoryManager {
 public:
-  DosMemoryManager() : DosMemoryManager(0x0800, 0x9FC0) {}
-  DosMemoryManager(uint16_t start_seg, uint16_t end_seg)
-      : start_seg_(start_seg), end_seg_(end_seg), top_seg_(start_seg_) {}
+  enum class fit_strategy_t { first = 0, best = 1, last = 2 };
+
+  explicit DosMemoryManager(door86::cpu::Memory* mem) : DosMemoryManager(mem, 0x0800, 0x9FC0) {}
+  DosMemoryManager(door86::cpu::Memory* mem, uint16_t start_seg, uint16_t end_seg);
   ~DosMemoryManager() = default;
 
-  // allocate a block of memory of size bytes, returns the starting segment;
-  std::optional<uint16_t> allocate(size_t size);
+  // allocate a block of memory of size bytes, returns the starting segment and also optional MCB;
+  std::optional<uint16_t> allocate(size_t size, bool create_mcb);
   void free(uint16_t seg);
 
+  // Strategy
+  fit_strategy_t strategy() const noexcept { return fit_; }
+  void strategy(fit_strategy_t fit) { fit_ = fit; }
+
+  // Visible for testing
+  std::vector<memory_block>& blocks() { return blocks_; }
+
 private:
+  void write_mcb(const memory_block& b);
+
+  door86::cpu::Memory* mem_;
   // See http://staff.ustc.edu.cn/~xyfeng/research/cos/resources/machine/mem.htm
   // First free block after boot sector code (rounded to 0x100)
   uint16_t start_seg_{0x0800};
@@ -34,7 +57,8 @@ private:
   // but even this gives us >600K available.
   // TODO(rushfan) Could we possibly move all the way up to 0xB800 or 0xB000)??
   uint16_t end_seg_{0x9FC0};
-  uint16_t top_seg_{start_seg_};
+  fit_strategy_t fit_{fit_strategy_t::first};
+  std::vector<memory_block> blocks_;
 };
 
 class Dos {
@@ -49,8 +73,8 @@ public:
   void int21(int, door86::cpu::x86::CPU&);
 
   std::unique_ptr<PSP> psp_;
+  door86::cpu::x86::CPU* cpu_;
   DosMemoryManager mem_mgr;
-  door86::cpu::x86::CPU* cpu_{nullptr};
 
 private:
   void getversion();
@@ -62,6 +86,9 @@ private:
   void display_char();
   void display_string();
   void get_char();
+  void dos_write();
+  void memory_strategy();
+  void set_handle_count();
 };
 
 /*

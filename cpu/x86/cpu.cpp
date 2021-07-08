@@ -884,8 +884,10 @@ void CPU::execute_0xC(const instruction_t& inst) {
   // LES r16,m16:16 - Load ES:r16 with far pointer from memory.
   case 0x4: {
     const auto seg = core.sregs.get(inst.seg_index());
-    core.regs.x.set(inst.mdrm.reg, memory.get<uint16_t>(seg, inst.operand16));
-    core.sregs.es = memory.get<uint16_t>(seg, inst.operand16 + 2);
+    const auto mem_off = memory.get<uint16_t>(seg, inst.operand16);
+    const auto mem_seg = memory.get<uint16_t>(seg, inst.operand16 + 2);
+    core.regs.x.set(inst.mdrm.reg, mem_off);
+    core.sregs.es = mem_seg;
   } break;
   // LDS r16,m16:16 - Load DS:r16 with far pointer from memory.
   // 

@@ -32,7 +32,7 @@ bool Dos::initialize_process(const std::filesystem::path& filename) {
 
   const std::string env = R"(COMSPEC=Z:\DOS\COMMAND.COM\0)";
   const auto env_needed = ((env.size() | 0x3F) + 1) * 2;
-  auto eseg = mem_mgr.allocate(env_needed);
+  auto eseg = mem_mgr.allocate(env_needed, false);
   if (!eseg) {
     std::cout << "Failed to allocate memory: " << memory_needed;
     return EXIT_FAILURE;
@@ -48,7 +48,7 @@ bool Dos::initialize_process(const std::filesystem::path& filename) {
     auto exe = o.value();
     code_offset = exe.header_size();
     memory_needed = exe.memory_needed();
-    auto oseg = mem_mgr.allocate(memory_needed);
+    auto oseg = mem_mgr.allocate(memory_needed, true);
     if (!oseg) {
       std::cout << "Failed to allocate memory: " << memory_needed;
       return EXIT_FAILURE;
@@ -63,7 +63,7 @@ bool Dos::initialize_process(const std::filesystem::path& filename) {
     LOG(INFO) << fmt::format("PSP SEG:  {:04X} ", psp_seg);
     cpu_->core.sregs.cs = exe.hdr.cs + seg;
     cpu_->core.sregs.ss = exe.hdr.ss + seg;
-    cpu_->core.regs.x.sp = exe.hdr.sp + seg;
+    cpu_->core.regs.x.sp = exe.hdr.sp;
     cpu_->core.ip = exe.hdr.ip;
     LOG(INFO) << "CS: " << cpu_->core.sregs.cs;
     // load_image will relocate relos
@@ -71,7 +71,7 @@ bool Dos::initialize_process(const std::filesystem::path& filename) {
     //
     // COM file
     //
-    auto oseg = mem_mgr.allocate(memory_needed);
+    auto oseg = mem_mgr.allocate(memory_needed, true);
     if (!oseg) {
       std::cout << "Failed to allocate memory: " << memory_needed;
       return EXIT_FAILURE;
@@ -95,24 +95,85 @@ bool Dos::initialize_process(const std::filesystem::path& filename) {
   return true;
 }
 
-// allocate a block of memory of size bytes, returns the starting segment;
-std::optional<uint16_t> DosMemoryManager::allocate(size_t size) {
-  const auto segs_needed = static_cast<uint16_t>(1 + (size / 16));
-  if ((end_seg_ - start_seg_) < segs_needed) {
-    // not enough memory.
-    return std::nullopt;
+DosMemoryManager::DosMemoryManager(door86::cpu::Memory* mem, uint16_t start_seg, uint16_t end_seg)
+    : mem_(mem_), start_seg_(start_seg), end_seg_(end_seg) {
+  // Add the starer block
+  memory_block b{};
+  b.avail = memory_avail_t::free;
+  b.start = start_seg_;
+  b.size = (end_seg_ - start_seg_);
+  b.owner = 0;
+  blocks_.emplace_back(b);
+}
+
+memory_block make_block(uint16_t start, uint16_t size, const memory_avail_t avail) {
+  memory_block b{};
+  b.avail = avail;
+  b.size = size;
+  b.start = start;
+  return b;
+}
+    // allocate a block of memory of size bytes, returns the starting segment;
+std::optional<uint16_t> DosMemoryManager::allocate(size_t size, bool create_mcb) {
+  auto segs_needed = static_cast<uint16_t>(size >> 4);
+  if (size & 0x000F) {
+    ++segs_needed;
   }
-  auto seg = top_seg_;
-  // to start with we'll load from the bottom
-  top_seg_ += segs_needed;
-  return {seg};
+  if (create_mcb) {
+    ++segs_needed;
+  }
+  // todo - implement best, jsut use first if not last.
+  if (fit_ == fit_strategy_t::last) {
+    for (auto& it = std::rbegin(blocks_); it != std::rend(blocks_); ++it) {
+      if (it->avail == memory_avail_t::free && it->size >= segs_needed) {
+        if (it->size - segs_needed <= 256) {
+          // Just make ram used, and return the existing block.
+          it->avail = memory_avail_t::used;
+          return {it->start};
+        }
+        // shrink current free block and assign the new one added after it
+        it->size -= segs_needed;
+        it->avail = memory_avail_t::free;
+        const auto start = it->start + it->size;
+        blocks_.emplace(it.base(), make_block(start, segs_needed, memory_avail_t::used));
+        return {start};
+      }
+    }
+  } else {
+    for (auto& it = std::begin(blocks_); it != std::end(blocks_); ++it) {
+      if (it->avail == memory_avail_t::free && it->size >= segs_needed) {
+        if (it->size - segs_needed <= 256) {
+          // Just make ram used, and return the existing block.
+          it->avail = memory_avail_t::used;
+          return {it->start};
+        }
+        auto b = make_block(it->start + segs_needed, it->size - segs_needed, memory_avail_t::free);
+        // shrink current free block and assign the new one added after it
+        it->size = segs_needed;
+        it->avail = memory_avail_t::used;
+        // Save start pos to return it later.
+        const auto start = it->start;
+        blocks_.emplace(it + 1, std::move(b));
+        return {start};
+      }
+    }
+  }
+  // not enough memory.
+  return std::nullopt;
 }
 
 void DosMemoryManager::free(uint16_t seg) {
-  // TODO(rushfan): Implement free
+  // TODO(rushfan): Implement better version of free that merges free blocks.
+  for (auto& it = std::begin(blocks_); it != std::end(blocks_); ++it) {
+    if (it->start == seg && it->avail == memory_avail_t::used) {
+      it->avail = memory_avail_t::free;
+      it->owner = 0;
+      return;
+    }
+  }
 }
 
-Dos::Dos(door86::cpu::x86::CPU* cpu) : cpu_(cpu) {
+Dos::Dos(door86::cpu::x86::CPU* cpu) : cpu_(cpu), mem_mgr(&cpu->memory) {
   cpu_->int_handlers().try_emplace(
       0x20, std::bind(&Dos::int20, this, std::placeholders::_1, std::placeholders::_2));
   cpu_->int_handlers().try_emplace(
@@ -128,7 +189,7 @@ Dos::Dos(door86::cpu::x86::CPU* cpu) : cpu_(cpu) {
 void Dos::int20(int, door86::cpu::x86::CPU& cpu) { cpu_->halt(); }
 
 void Dos::int21(int, door86::cpu::x86::CPU& cpu) {
-  LOG(INFO) << fmt::format("[{:04x}:{:04x}] DOS Interrupt: 0x{:04x}; {:02X}", cpu_->core.sregs.cs,
+  VLOG(3) << fmt::format("[{:04x}:{:04x}] DOS Interrupt: 0x{:04x}; {:02X}", cpu_->core.sregs.cs,
                            cpu_->core.ip, cpu_->core.regs.x.ax,
                            static_cast<int>(cpu_->core.regs.h.ah));
   switch (cpu_->core.regs.h.ah) {
@@ -146,11 +207,14 @@ void Dos::int21(int, door86::cpu::x86::CPU& cpu) {
   case 0x30: getversion(); break;
   // Get Interrupt Vector
   case 0x35: get_interrupt_vector(); break;
+  case 0x40: dos_write(); break;
   // terminate app.
   case 0x4c:
     VLOG(2) << "Terminate App";
     cpu_->halt();
     break;
+  case 0x58: memory_strategy(); break;
+  case 0x67: set_handle_count(); break;
   default: {
     // unhandled
     VLOG(2) << "Unhandled DOS Interrupt "
@@ -198,5 +262,51 @@ void Dos::display_string() {
 }
 
 void Dos::get_char() { cpu_->core.regs.h.al = static_cast<uint8_t>(fgetc(stdin)); }
+
+/*
+  AH = 40h
+  BX = file handle
+  CX = number of bytes to write, a zero value truncates/extends
+        the file to the current file position
+  DS:DX = pointer to write buffer
+
+  0 - Standard Input Device - can be redirected (STDIN)
+  1 - Standard Output Device - can be redirected (STDOUT)
+  2 - Standard Error Device - can be redirected (STDERR)
+  3 - Standard Auxiliary Device (STDAUX)
+  4 - Standard Printer Device (STDPRN) 
+ */
+void Dos::dos_write() {
+  VLOG(1) << "dos_write: ";
+  const auto h = cpu_->core.regs.x.bx;
+  FILE* f = stdout;
+  if (h < 5) {
+    if (h == 2) {
+      f = stderr;
+    }
+  } else {
+    LOG(WARNING) << "Writing to files not yet supported";
+    return;
+  }
+  auto* b = &cpu_->memory[(cpu_->core.sregs.ds * 0x10) + cpu_->core.regs.x.dx];
+  fwrite(b, 1, cpu_->core.regs.x.cx, f);
+}
+
+
+void Dos::memory_strategy() { 
+  switch (cpu_->core.regs.h.al) {
+  case 0: //get
+    cpu_->core.regs.x.bx = 2;
+    break;
+  case 1: // set
+    // DO nothing.
+    break;
+  }
+}
+
+void Dos::set_handle_count() {
+  // NOP - success
+  cpu_->core.flags.cflag(false);
+}
 
 } // namespace door86::dos
