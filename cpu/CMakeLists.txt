@@ -30,7 +30,7 @@ GTEST_DISCOVER_TESTS(cpu_tests)
 add_executable(decoder_tests 
  "x86/decoder_test.cpp"
 )
-target_link_libraries(decoder_tests cpu GTest::gtest_main)
+target_link_libraries(decoder_tests cpu cpu_fixtures GTest::gtest_main)
 GTEST_DISCOVER_TESTS(decoder_tests)
 
 add_executable(memory_tests 

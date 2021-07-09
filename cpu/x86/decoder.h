@@ -61,8 +61,10 @@ class instruction_t {
 public:
   uint8_t op{0};
   reg_mod_rm mdrm;
-  uint8_t operand8{0};
-  uint16_t operand16{0};
+  uint8_t disp8{0};
+  uint16_t disp16{0};
+  uint8_t imm8{0};
+  uint16_t imm16{0};
   int len{0};
   op_code_data_t metadata{};
 
@@ -107,7 +109,7 @@ public:
   /** Fetches the next instruction from the bytestream at o */
   instruction_t decode(const std::vector<uint8_t> o);
 
-  std::string to_string(const instruction_t& i);
+//  std::string to_string(const instruction_t& i);
   const op_code_data_t& op_data(uint8_t opcode) const { return op_data_.at(opcode); }
 
 private:

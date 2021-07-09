@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include "cpu/x86/cpu_fixture.h"
 #include "cpu/x86/decoder.h"
 #include <iostream>
 
@@ -21,7 +22,7 @@ TEST(DecoderTest, ToString) {
   int line = 0;
   while (ip < end) {
     auto inst = decoder.decode(ip);
-    std::cout << ++line << ": " << decoder.to_string(inst) << std::endl;
+    std::cout << ++line << ": " << inst.DebugString() << std::endl;
     ip += inst.len;
   }
 }
@@ -47,3 +48,16 @@ TEST(DecoderTest, Smoke) {
   ip += inst.len;
   EXPECT_EQ("INT", inst.metadata.name);
 }
+
+// 810626008000
+TEST(DecoderTest, Disp16AndImm16) {
+  Decoder decoder;
+  const auto ops = parse_opcodes_from_line("810626008000");
+  const auto inst = decoder.decode(ops);
+
+  EXPECT_EQ(0x81, inst.op);
+  EXPECT_EQ(0x0026, inst.disp16);
+  EXPECT_EQ(0x0080, inst.imm16);
+}
+
+// 833E260000 - Disp16AndImm8

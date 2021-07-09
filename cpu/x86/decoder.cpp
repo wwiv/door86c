@@ -47,12 +47,12 @@ std::vector<op_code_data_t> create_opcode_metadata() {
       {0x1e, op_mask_none, "PUSH DS"},
       {0x1f, op_mask_none, "POP DS"},
 
-      {0x10, op_mask_modrm8, "AND", 8},
-      {0x11, op_mask_modrm16, "AND"},
-      {0x12, op_mask_modrm8, "AND", 8},
-      {0x13, op_mask_modrm16, "AND"},
-      {0x14, op_mask_imm8, "AND", 8},
-      {0x15, op_mask_imm16, "AND"},
+      {0x20, op_mask_modrm8, "AND", 8},
+      {0x21, op_mask_modrm16, "AND"},
+      {0x22, op_mask_modrm8, "AND", 8},
+      {0x23, op_mask_modrm16, "AND"},
+      {0x24, op_mask_imm8, "AND", 8},
+      {0x25, op_mask_imm16, "AND"},
       {0x26, op_mask_notimpl, ""},
       {0x27, op_mask_notimpl, ""},
       {0x28, op_mask_modrm8, "SUB", 8},
@@ -221,8 +221,8 @@ std::vector<op_code_data_t> create_opcode_metadata() {
       {0xBE, op_mask_imm16, "MOV"},
       {0xBF, op_mask_imm16, "MOV"},
 
-      {0xC0, op_mask_modrm8 | uses_reg_subcode, "0xC0/M", 8},
-      {0xC1, op_mask_modrm16 | uses_reg_subcode, "0xC1/M"},
+      {0xC0, op_mask_modrm8 | op_mask_imm8| uses_reg_subcode, "0xC0/M", 8},
+      {0xC1, op_mask_modrm16 | uses_reg_subcode | op_mask_imm8, "0xC1/M"},
       {0xC2, op_mask_imm16, "RET"},
       {0xC3, op_mask_none, "RET"},
       {0xC4, op_mask_modrm16, "LES"},
@@ -257,10 +257,10 @@ std::vector<op_code_data_t> create_opcode_metadata() {
       {0xDe, op_mask_notimpl | op_mask_imm8, "ESC", 8},
       {0xDf, op_mask_notimpl | op_mask_imm8, "ESC", 8},
 
-      {0xE0, op_mask_imm8, "LOOPNE", 8},
-      {0xE1, op_mask_imm8, "LOOPE", 8},
-      {0xE2, op_mask_imm8, "LOOP", 8},
-      {0xE3, op_mask_imm8, "JCXZ", 8},
+      {0xE0, op_mask_rel8, "LOOPNE", 8},
+      {0xE1, op_mask_rel8, "LOOPE", 8},
+      {0xE2, op_mask_rel8, "LOOP", 8},
+      {0xE3, op_mask_rel8, "JCXZ", 8},
       {0xE4, op_mask_imm8, "IN", 8},
       {0xE5, op_mask_imm8, "IN", 8},
       {0xE6, op_mask_imm8, "", 8},
@@ -416,11 +416,11 @@ instruction_t Decoder::decode(const uint8_t* o) {
       auto lsb = *o++;
       i.bytes.push_back(*o);
       auto msb = *o++;
-      i.operand16 = (msb << 8) | lsb;
+      i.disp16 = (msb << 8) | lsb;
     } else if (i.mdrm.mod == 0x01) {
       i.len++;
       i.bytes.push_back(*o);
-      i.operand8 = *o++;
+      i.disp8 = *o++;
     }
   }
   // Let the metadata immediate bytes replace any that came from
@@ -428,14 +428,14 @@ instruction_t Decoder::decode(const uint8_t* o) {
   if (i.metadata.mask & op_mask_imm8) {
     i.len++;
     i.bytes.push_back(*o);
-    i.operand8 = *o++;
+    i.imm8 = *o++;
   } else if (i.metadata.mask & op_mask_imm16) {
     i.len += 2;
     i.bytes.push_back(*o);
     auto lsb = *o++;
     i.bytes.push_back(*o);
     auto msb = *o++;
-    i.operand16 = (msb << 8) | lsb;
+    i.imm16 = (msb << 8) | lsb;
   }
   return i;
 }
@@ -508,7 +508,8 @@ std::string rm_to_string(const reg_mod_rm& rm, int bits, uint8_t operand8, uint1
   return {};
 }
 
-std::string Decoder::to_string(const instruction_t& i) {
+/*
+ std::string Decoder::to_string(const instruction_t& i) {
   const auto& op = op_data_[i.op];
   std::ostringstream ss;
   ss << (op.name.empty() ? "???" : op.name) << " ";
@@ -545,6 +546,7 @@ std::string Decoder::to_string(const instruction_t& i) {
   }
   return ss.str();
 }
+*/
 
 Decoder::Decoder(bool save_bytes) : op_data_(create_opcode_metadata()), save_bytes_(save_bytes) {}
 
@@ -562,6 +564,7 @@ std::string instruction_t::DebugString() const {
     rs += fmt::format("[SO:{}]", segment_names.at(static_cast<int>(seg_index())));
   }
   std::string r;
+  std::string disp;
   std::string imm;
   auto name = metadata.name;
   if (metadata.mask & uses_reg_subcode) {
@@ -589,18 +592,17 @@ std::string instruction_t::DebugString() const {
       }
     }
     if ((mdrm.rm == 0x06 && mdrm.mod == 0) || mdrm.mod == 0x02) {
-      imm = fmt::format(" imm:{:04X}, ", operand16);
+      disp = fmt::format(" disp:{:04X}, ", disp16);
     } else if (mdrm.mod == 0x01) {
-      imm = fmt::format(" imm:{:02X}, ", operand8);
+      disp = fmt::format(" disp:{:02X}, ", disp8);
     }
   }
   if (metadata.mask & op_mask_imm8) {
-    imm = fmt::format(" imm:{:02X}, ", operand8);
+    imm = fmt::format(" imm:{:02X}, ", imm8);
   } else if (metadata.mask & op_mask_imm16) {
-    imm = fmt::format(" imm:{:04X}, ", operand16);
+    imm = fmt::format(" imm:{:04X}, ", imm16);
   }
-  const auto line = fmt::format("{:10} [len:{}]{} 0x{:02X}/{}{}{}", bs, len, rs, op, name, r, imm);
-  return line;
+  return fmt::format("{:10} [len:{}]{} 0x{:02X}/{}{}{}", bs, len, rs, op, name, r, imm);
 }
 
 } // namespace door86::cpu::x86
