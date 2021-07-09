@@ -203,7 +203,7 @@ public:
   inline bool pflag() const { return value_ & PF; }
   inline bool aflag() const { return value_ & AF; }
   inline bool zflag() const { return value_ & ZF; }
-  inline bool sflag() const { return value_ & ZF; }
+  inline bool sflag() const { return value_ & SF; }
   inline bool tflag() const { return value_ & TF; }
   inline bool iflag() const { return value_ & IF; }
   inline bool dflag() const { return value_ & DF; }

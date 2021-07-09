@@ -1,3 +1,4 @@
+#include "bios/bios.h"
 #include "core/log.h"
 #include "core/command_line.h"
 #include "core/scope_exit.h"
@@ -18,7 +19,6 @@
 
 using namespace wwiv::core;
 using namespace door86::cpu::x86;
-using namespace door86::dos;
 
 
 static std::string to_seg_off(uint16_t seg, uint16_t off) {
@@ -52,7 +52,8 @@ int main(int argc, char** argv) {
   const auto& filename = cmdline.remaining().front();
 
   CPU cpu;
-  Dos dos(&cpu);
+  door86::bios::Bios bios(&cpu);
+  door86::dos::Dos dos(&cpu);
 
   if (!dos.initialize_process(filename)) {
     LOG(WARNING) << "Failed to initialize DOS process";

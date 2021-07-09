@@ -733,6 +733,14 @@ void CPU::execute_0x9(const instruction_t& inst) {
     return;
   } 
   switch (inst.op & 0x0f) {
+  // 98: CBW: AX = sign-extend of AL.
+  case 0x8: core.regs.h.ah = (core.regs.h.al & 0x80) ? 0xff : 0x00; break;
+  // 99: CWD: DX:AX = sign-extend of AX.
+  case 0x9: core.regs.x.dx = (core.regs.x.ax & 0x8000) ? 0xffff : 0x0000; break;
+  // 9C: Push lower 16 bits of EFLAGS.
+  case 0xC: push(core.flags.value_); break;
+  // 9D: Pop top of stack into lower 16 bits of EFLAGS.
+  case 0xD: core.flags.value_ = pop(); break;
   default:
     LOG(WARNING) << fmt::format("Skipped OPCODE: 0x{:02x}", static_cast<int>(inst.op));
     break;
@@ -840,19 +848,19 @@ void CPU::execute_0xA(const instruction_t& inst) {
     memory.set<uint16_t>(core.sregs.es, core.regs.x.di, core.regs.x.ax);
     core.regs.x.di += step;
   } break;
-  // LODS m8
+  // LODSB
   case 0xC: {
     const int16_t step = core.flags.dflag() ? -1 : 1;
     auto r = r8(&core.regs.h.al);
-    r.set(memory.get<uint8_t>(core.sregs.es, core.regs.x.di));
-    core.regs.x.di += step;
+    r.set(memory.get<uint8_t>(core.sregs.ds, core.regs.x.si));
+    core.regs.x.si += step;
   } break;
-  // LODS m16
+  // LODSW
   case 0xD: {
     const int16_t step = core.flags.dflag() ? -2 : 2;
     auto r = r16(&core.regs.x.ax);
-    r.set(memory.get<uint16_t>(core.sregs.es, core.regs.x.di));
-    core.regs.x.di += step;
+    r.set(memory.get<uint16_t>(core.sregs.ds, core.regs.x.si));
+    core.regs.x.si += step;
   } break;
   // SCAS m8
   case 0xE: scas_m8(inst); break;
@@ -1394,8 +1402,9 @@ Rmm<RmmType::EITHER, uint16_t> CPU::rmm16(const instruction_t& inst) {
   }
   const auto seg = core.sregs.get(inst.seg_index());
   if (inst.mdrm.mod == 0 && inst.mdrm.rm == 0x06) {
-    const auto offset = inst.metadata.bits == 8 ? inst.operand8 : inst.operand16;
-    return Rmm<RmmType::EITHER, uint16_t>(&core, &memory, seg, offset);
+    //const auto offset = (inst.metadata.mask & op_mask_imm8) || inst.metadata.bits == 8 ? inst.operand8 : inst.operand16;
+    // Let's just go with modrm16 is always 16bit
+    return Rmm<RmmType::EITHER, uint16_t>(&core, &memory, seg, inst.operand16);
   }
   const auto offset = effective_address(inst, core);
   return Rmm<RmmType::EITHER, uint16_t>(&core, &memory, seg, offset);

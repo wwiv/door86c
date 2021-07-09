@@ -14,9 +14,10 @@ std::string cpu_core::DebugString() const {
   auto& f = flags;
   return fmt::format(
       R"(            AX={:04X}  BX={:04X}  CX={:04X}  DX={:04X}  SP={:04X}  BP={:04X}  SI={:04X}  DI={:04X}
-                                          DS={:04X} ES={:04X} SS={:04X} CS={:04X} IP={:04X}) Z:{} C:{} P:{} O:{})",
-      x.ax, x.bx, x.cx, x.dx, x.sp, x.bp, x.si, x.di, s.ds, s.es, s.ss, s.cs, ip, f.zflag() ? 1 : 0,
-      flags.cflag() ? 1 : 0, f.pflag() ? 1 : 0, f.oflag() ? 1 : 0);
+                                          DS={:04X} ES={:04X} SS={:04X} CS={:04X} IP={:04X}) C:{} P:{} Z:{} S:{} O:{})",
+      x.ax, x.bx, x.cx, x.dx, x.sp, x.bp, x.si, x.di, s.ds, s.es, s.ss, s.cs, ip,
+      flags.cflag() ? 1 : 0, f.pflag() ? 1 : 0, f.zflag() ? 1 : 0, f.sflag() ? 1 : 0,
+      f.oflag() ? 1 : 0);
 }
 
 

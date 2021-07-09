@@ -83,11 +83,15 @@ std::optional<Exe> read_exe_header(const std::filesystem::path& filepath) {
     return std::nullopt;
   }
 
-  exe.relos.resize(exe.hdr.num_relocs);
-  if (fread(&exe.relos[0], sizeof(exe_reloc_table_entry_t), exe.hdr.num_relocs, fp) !=
-      exe.hdr.num_relocs) {
-    fmt::print("Unable to read relo offsets from: [%s]\r\n", filename);
-    return std::nullopt;
+  if (exe.hdr.num_relocs) {
+    // Apparently some EXEs don't have anything to relocate, although the ones
+    // from BCC always do it seemed.
+    exe.relos.resize(exe.hdr.num_relocs);
+    if (fread(&exe.relos[0], sizeof(exe_reloc_table_entry_t), exe.hdr.num_relocs, fp) !=
+        exe.hdr.num_relocs) {
+      fmt::print("Unable to read relo offsets from: [%s]\r\n", filename);
+      return std::nullopt;
+    }
   }
 
   return exe;

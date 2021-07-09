@@ -17,7 +17,7 @@ pop ds
 
 mov si, offset banner
 call printmsg
-;call printmsg
+
 
 mov ax, 0F000h
 mov es, ax
@@ -26,6 +26,9 @@ jmp loopmain
 disptest dw 1234h
 
 loopmain:
+;mov si, offset dot
+;call printmsg
+
 mov cx, oper1
 add cx, oper2
 
@@ -109,9 +112,9 @@ call printmsg
 nexttest:
 add oper2, 80h
 cmp oper2, 0
-jnz loopmain
-mov si, offset dot
+mov si, offset dash
 call printmsg
+jnz loopmain
 add oper1, 80h
 cmp oper1, 0h
 jnz loopmain
@@ -122,6 +125,8 @@ call printmsg
 
 
 finished:
+mov    ah, 4ch
+int 21h
 ret
 
 pass:
@@ -153,6 +158,7 @@ banner   db '8086 CPU effective address calculation test utility',13,10
 strgood  db 'passed!',13,10,0
 strfail  db 'FAILED!',13,10,0     
 dot      db '.',0
+dash     db '-',0
 
 strfailbxsi   db 'failure in [BX+SI]',13,10,0
 strfailbxdi   db 'failure in [BX+DI]',13,10,0

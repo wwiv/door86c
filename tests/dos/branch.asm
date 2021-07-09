@@ -2,7 +2,15 @@
 ; various conditional branching operations. Designed to
 ; verify corrent functionality of my 8086 PC emulator, Fake86.
 
-org 100h
+; from https://forum.osdev.org/viewtopic.php?f=13&t=23739&start=15
+
+        .model  small
+
+        .stack  128
+
+        .code
+
+start:
 
 cli
 push cs
@@ -247,7 +255,7 @@ testjg:
 mov si, offset strjg
 call printmsg
 call blankflags
-jg testjg2:
+jg testjg2
 call fail
 jmp testjge
 testjg2:
@@ -485,3 +493,5 @@ strjle db 'Testing JLE/JNG (jump if SF<>OF or ZF=1)... ',0
 
 strgood db 'passed!',13,10,0
 strfail db 'FAILED!',13,10,0
+
+end start
