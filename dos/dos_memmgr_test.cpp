@@ -20,21 +20,21 @@ public:
 
 TEST_F(DosMemMgrTest, Smoke) { 
   ASSERT_EQ(1, mm.blocks().size());
-  const auto o = mm.allocate(0x20000, false);
+  const auto o = mm.allocate(0x2000);
   ASSERT_TRUE(o.has_value());
   ASSERT_EQ(0x1000, o.value());
 
-  const auto o2 = mm.allocate(0x50001, false);
+  const auto o2 = mm.allocate(0x5001);
   ASSERT_FALSE(o2.has_value());
 }
 
 TEST_F(DosMemMgrTest, Tail) {
   mm.strategy(DosMemoryManager::fit_strategy_t::last);
   ASSERT_EQ(1, mm.blocks().size());
-  const auto o = mm.allocate(0x20000, false);
+  const auto o = mm.allocate(0x2000);
   ASSERT_TRUE(o.has_value());
   ASSERT_EQ(0x5000, o.value());
 
-  const auto o2 = mm.allocate(0x50001, false);
+  const auto o2 = mm.allocate(0x5001);
   ASSERT_FALSE(o2.has_value());
 }

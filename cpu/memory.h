@@ -70,8 +70,8 @@ public:
   // Gets a pointer to a memory location and zeros out the block.
   template <class T> T* ptr_zero(uint16_t seg, uint16_t off) const {
     const auto loc = abs_memory(seg, off);
-    CHECK_LE(loc + sizeof(T), size_);
-    auto* p reinterpret_cast<T*>(mem_ + loc);
+    CHECK_LE(static_cast<int>(loc + sizeof(T)), size_);
+    auto* p = reinterpret_cast<T*>(mem_ + loc);
     memset(p, '\0', sizeof(T));
     return p;
   }

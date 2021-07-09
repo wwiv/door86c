@@ -180,8 +180,7 @@ public:
     bigT cur;
     if constexpr (std::is_same_v<T, uint8_t>) {
       cur = 0x100 - get();
-    } else 
-    if constexpr (std::is_same_v<T, uint16_t>) {
+    } else if constexpr (std::is_same_v<T, uint16_t>) {
       cur = 0x10000 - get();
     } else {
       static_assert(false, "needs uint8_t or uint16_t");

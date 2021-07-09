@@ -16,15 +16,21 @@ namespace door86::dos {
 
 enum class memory_avail_t { free, used, system };
 struct memory_block {
+  // Available?
+  memory_avail_t avail{memory_avail_t ::free};
   // segment start
   uint16_t start;
   // number of 16-byte paragraphs
   uint16_t size;
   // owner segment (should be start +1)
   uint16_t owner;
-  // Available?
-  memory_avail_t avail{memory_avail_t ::free};
+  std::string prog_name;
 };
+
+bool operator<(const memory_block& lhs, const memory_block& rhs);
+
+bool operator==(const memory_block& lhs, const memory_block& rhs);
+
 
 class DosMemoryManager {
 public:
@@ -34,9 +40,16 @@ public:
   DosMemoryManager(door86::cpu::Memory* mem, uint16_t start_seg, uint16_t end_seg);
   ~DosMemoryManager() = default;
 
-  // allocate a block of memory of size bytes, returns the starting segment and also optional MCB;
-  std::optional<uint16_t> allocate(size_t size, bool create_mcb);
-  void free(uint16_t seg);
+  // allocate a block of memory of size paragraphs, returns the starting segment for the MCB and also optional MCB;
+  std::optional<uint16_t> allocate(uint16_t segs);
+
+  // Finds a memory block located at seg.
+  // seg will be the address of the MCB.
+  bool free(uint16_t seg);
+
+  // Finds a memory block located at seg.
+  // seg will be the address of the MCB.
+  std::optional<memory_block*> find(uint16_t seg);
 
   // Strategy
   fit_strategy_t strategy() const noexcept { return fit_; }
@@ -68,7 +81,7 @@ public:
   // Initializes the PSP and anything else needed before starting
   // DS contains the PSP segment.
   bool initialize_process(const std::filesystem::path& filename);
-
+  
   void int20(int, door86::cpu::x86::CPU&);
   void int21(int, door86::cpu::x86::CPU&);
 
@@ -87,8 +100,14 @@ private:
   void display_string();
   void get_char();
   void dos_write();
-  void memory_strategy();
   void set_handle_count();
+
+  // Memory
+  void memory_strategy();
+  void allocate();
+  void free();
+  // reallocate a memory block;
+  void realloc();
 };
 
 /*

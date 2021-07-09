@@ -389,25 +389,29 @@ void CPU::execute_0x6(const instruction_t& inst) {
   switch (inst.op & 0x0f) {
   // PUSHA
   case 0x0: {
+    const auto temp = core.regs.x.sp;
     push(core.regs.x.ax);
     push(core.regs.x.cx);
     push(core.regs.x.dx);
     push(core.regs.x.bx);
-    push(core.regs.x.sp);
+    push(temp);
     push(core.regs.x.bp);
     push(core.regs.x.si);
     push(core.regs.x.di);
+    VLOG(1) << fmt::format("PUSHA; SP: {:02x}", core.regs.x.sp);
   } break;
   // POPA
   case 0x1: {
     core.regs.x.di = pop();
     core.regs.x.si = pop();
     core.regs.x.bp = pop();
-    core.regs.x.sp = pop();
+    // skip core.regs.x.sp
+    core.regs.x.sp += 2;
     core.regs.x.bx = pop();
     core.regs.x.dx = pop();
     core.regs.x.cx = pop();
     core.regs.x.ax = pop();
+    VLOG(1) << fmt::format("POPA; SP: {:02x}", core.regs.x.sp);
   } break;
   case 0x8: push(inst.operand16); break;
   case 0xA: push(inst.operand8); break;
@@ -740,7 +744,7 @@ void CPU::scas_m8(const instruction_t& inst) {
   const auto b = memory.get<uint8_t>(core.sregs.es, core.regs.x.di);
   auto r = r8(&core.regs.h.al);
   r.cmp(b);
-  VLOG(2) << "SCAS: left: " << static_cast<int>(r.get()) << "; right: " << static_cast<int>(b)
+  VLOG(4) << "SCAS: left: " << static_cast<int>(r.get()) << "; right: " << static_cast<int>(b)
           << "; ZF: " << core.flags.zflag();
   core.regs.x.di += step;
 }
@@ -750,7 +754,7 @@ void CPU::scas_m16(const instruction_t& inst) {
   const auto b = memory.get<uint16_t>(core.sregs.es, core.regs.x.di);
   auto r = r16(&core.regs.x.ax);
   r.cmp(b);
-  VLOG(2) << "SCAS: left: " << static_cast<int>(r.get()) << "; right: " << static_cast<int>(b)
+  VLOG(4) << "SCAS: left: " << static_cast<int>(r.get()) << "; right: " << static_cast<int>(b)
           << "; ZF: " << core.flags.zflag();
   core.regs.x.di += step;
 }
@@ -875,6 +879,8 @@ void CPU::execute_0xC(const instruction_t& inst) {
   // RET (near call and clear some bytes of stack)
   case 0x2: {
     core.ip = pop();
+    VLOG(1) << fmt::format("RET and clear stack: num: {:02x}; SP: {:02x}", inst.operand16,
+                           core.regs.x.sp);
     core.regs.x.sp += inst.operand16;
   } break;
   // RET (near call)
@@ -914,6 +920,8 @@ void CPU::execute_0xC(const instruction_t& inst) {
   case 0xA: {
     core.ip = pop();
     core.sregs.cs = pop();
+    VLOG(1) << fmt::format("RETF and clear stack: num: {:02x}; SP: {:02x}", inst.operand16,
+                           core.regs.x.sp);
     core.regs.x.sp += inst.operand16;
   } break;
   // RET (far call)
@@ -1262,15 +1270,15 @@ bool CPU::run() {
   while (running_) {
     const int pos = (core.sregs.cs * 0x10) + core.ip;
     const auto inst = decoder.decode(&memory[pos]);
-    if (VLOG_IS_ON(2)) {
+    if (VLOG_IS_ON(3)) {
       const auto line =
           fmt::format("[{:04x}:{:04x}] inst: {}", core.sregs.cs, core.ip, inst.DebugString());
-      VLOG(2) << line;
+      VLOG(3) << line;
     }
     core.ip += inst.len;
     execute(inst);
-    if (VLOG_IS_ON(2)) {
-      VLOG(2) << core.DebugString();
+    if (VLOG_IS_ON(4)) {
+      VLOG(4) << core.DebugString();
       std::cerr << std::endl;
     }
   }
@@ -1321,11 +1329,6 @@ bool CPU::execute(const instruction_t& inst) {
         done = !core.flags.zflag();
       }
     }
-    //if (VLOG_IS_ON(2)) {
-    //  if (!done) {
-    //    VLOG(2) << "LOOP";
-    //  }
-    //}
   } while (!done);
   return true;
 }
@@ -1335,6 +1338,7 @@ void CPU::push(uint16_t val) {
   // To push we decrement the stack pointer and then add it.
   core.regs.x.sp -= 2;
   // TODO(rushfan): assert if sp <= 0x0000
+  VLOG(1) << fmt::format("PUSH: val: {:02x}; SP: {:02x}", val, core.regs.x.sp);
   memory.set<uint16_t>(core.sregs.ss, core.regs.x.sp, val);
 }
 
@@ -1342,6 +1346,7 @@ uint16_t CPU::pop() {
   const auto m = memory.get<uint16_t>(core.sregs.ss, core.regs.x.sp);
   core.regs.x.sp += 2; 
   // TODO(rushfan): assert if sp >= 0xffff
+  VLOG(1) << fmt::format("POP: val: {:02x}; SP: {:02x}", m, core.regs.x.sp);
   return m;
 }
 

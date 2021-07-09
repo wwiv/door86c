@@ -41,22 +41,15 @@ static uint16_t base_ea(reg_mod_rm modrm, const cpu_core& core) {
 // Returns the effective address offset (not segment) from the modrm byte
 // and following offset.
 uint16_t effective_address(const instruction_t& inst, const cpu_core& core) {
-  if (inst.mdrm.mod == 0) {
-    const auto disp = inst.metadata.bits == 8 ? inst.operand8 : inst.operand16;
-    return disp;
-  } else if (inst.mdrm.mod == 3) {
-    // TODO(rushfan): Should we fail here?
-    LOG(WARNING) << "Whoops! Getting Effective Address for mod3??!?!?";
-    return 0;
-  } else {
-    // mod 1 and 2 adds a 8 or 16 bit dispacemnt
-    const auto base = base_ea(inst.mdrm, core);
-    const auto disp = inst.metadata.bits == 8 ? inst.operand8 : inst.operand16;
-    return base + disp;
+  switch (inst.mdrm.mod) {
+  case 0: return inst.metadata.bits == 8 ? inst.operand8 : inst.operand16;
+  case 1: return base_ea(inst.mdrm, core) + static_cast<int8_t>(inst.operand8);
+  case 2: return base_ea(inst.mdrm, core) + inst.operand16;
+  case 3: LOG(FATAL) << "Whoops! Getting Effective Address for mod3??!?!?"; return 0;
+  default: LOG(FATAL) << "Whoops! Unknown mod!" << inst.mdrm.mod; return 0;
   }
 }
-
-// **** NOTE: Keep rmm8 and rmm16 in sync
+  // **** NOTE: Keep rmm8 and rmm16 in sync
 
 // returns the offset for the effective address described by a modrm byte
 // returns the rm portion for the modrm

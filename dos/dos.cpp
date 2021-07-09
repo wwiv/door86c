@@ -4,6 +4,7 @@
 #include "core/log.h"
 #include "core/scope_exit.h"
 #include "dos/exe.h"
+#include "dos/mcb.h"
 #include "fmt/format.h"
 #include "fmt/printf.h"
 #include <cstdio>
@@ -21,6 +22,12 @@ using namespace wwiv::core;
 
 namespace door86::dos {
 
+bool operator<(const memory_block& lhs, const memory_block& rhs) { return lhs.start < rhs.start; }
+
+bool operator==(const memory_block& lhs, const memory_block& rhs) {
+  return lhs.start == rhs.start && lhs.size == rhs.size;
+}
+
 bool Dos::initialize_process(const std::filesystem::path& filename) {
   if (psp_) {
     LOG(WARNING) << "Trying to reinitialize a process with existing PSP";
@@ -31,8 +38,8 @@ bool Dos::initialize_process(const std::filesystem::path& filename) {
   int memory_needed = 0xffff;
 
   const std::string env = R"(COMSPEC=Z:\DOS\COMMAND.COM\0)";
-  const auto env_needed = ((env.size() | 0x3F) + 1) * 2;
-  auto eseg = mem_mgr.allocate(env_needed, false);
+  const auto env_needed = static_cast<uint16_t>(((env.size() | 0x3F) + 1) * 2);
+  auto eseg = mem_mgr.allocate(env_needed);
   if (!eseg) {
     std::cout << "Failed to allocate memory: " << memory_needed;
     return EXIT_FAILURE;
@@ -47,8 +54,8 @@ bool Dos::initialize_process(const std::filesystem::path& filename) {
     }
     auto exe = o.value();
     code_offset = exe.header_size();
-    memory_needed = exe.memory_needed();
-    auto oseg = mem_mgr.allocate(memory_needed, true);
+    memory_needed = exe.memory_needed() + 1;
+    auto oseg = mem_mgr.allocate(memory_needed);
     if (!oseg) {
       std::cout << "Failed to allocate memory: " << memory_needed;
       return EXIT_FAILURE;
@@ -71,7 +78,7 @@ bool Dos::initialize_process(const std::filesystem::path& filename) {
     //
     // COM file
     //
-    auto oseg = mem_mgr.allocate(memory_needed, true);
+    auto oseg = mem_mgr.allocate(memory_needed);
     if (!oseg) {
       std::cout << "Failed to allocate memory: " << memory_needed;
       return EXIT_FAILURE;
@@ -113,43 +120,36 @@ memory_block make_block(uint16_t start, uint16_t size, const memory_avail_t avai
   b.start = start;
   return b;
 }
-    // allocate a block of memory of size bytes, returns the starting segment;
-std::optional<uint16_t> DosMemoryManager::allocate(size_t size, bool create_mcb) {
-  auto segs_needed = static_cast<uint16_t>(size >> 4);
-  if (size & 0x000F) {
-    ++segs_needed;
-  }
-  if (create_mcb) {
-    ++segs_needed;
-  }
+    // allocate a block of memory of size paragraphs, returns the starting segment;
+std::optional<uint16_t> DosMemoryManager::allocate(uint16_t segs) {
   // todo - implement best, jsut use first if not last.
   if (fit_ == fit_strategy_t::last) {
     for (auto& it = std::rbegin(blocks_); it != std::rend(blocks_); ++it) {
-      if (it->avail == memory_avail_t::free && it->size >= segs_needed) {
-        if (it->size - segs_needed <= 256) {
+      if (it->avail == memory_avail_t::free && it->size >= segs) {
+        if (it->size - segs <= 256) {
           // Just make ram used, and return the existing block.
           it->avail = memory_avail_t::used;
           return {it->start};
         }
         // shrink current free block and assign the new one added after it
-        it->size -= segs_needed;
+        it->size -= segs;
         it->avail = memory_avail_t::free;
         const auto start = it->start + it->size;
-        blocks_.emplace(it.base(), make_block(start, segs_needed, memory_avail_t::used));
+        blocks_.emplace(it.base(), make_block(start, segs, memory_avail_t::used));
         return {start};
       }
     }
   } else {
     for (auto& it = std::begin(blocks_); it != std::end(blocks_); ++it) {
-      if (it->avail == memory_avail_t::free && it->size >= segs_needed) {
-        if (it->size - segs_needed <= 256) {
+      if (it->avail == memory_avail_t::free && it->size >= segs) {
+        if (it->size - segs <= 256) {
           // Just make ram used, and return the existing block.
           it->avail = memory_avail_t::used;
           return {it->start};
         }
-        auto b = make_block(it->start + segs_needed, it->size - segs_needed, memory_avail_t::free);
+        auto b = make_block(it->start + segs, it->size - segs, memory_avail_t::free);
         // shrink current free block and assign the new one added after it
-        it->size = segs_needed;
+        it->size = segs;
         it->avail = memory_avail_t::used;
         // Save start pos to return it later.
         const auto start = it->start;
@@ -162,15 +162,25 @@ std::optional<uint16_t> DosMemoryManager::allocate(size_t size, bool create_mcb)
   return std::nullopt;
 }
 
-void DosMemoryManager::free(uint16_t seg) {
+bool DosMemoryManager::free(uint16_t seg) {
   // TODO(rushfan): Implement better version of free that merges free blocks.
   for (auto& it = std::begin(blocks_); it != std::end(blocks_); ++it) {
     if (it->start == seg && it->avail == memory_avail_t::used) {
       it->avail = memory_avail_t::free;
       it->owner = 0;
-      return;
+      return true;
     }
   }
+  return false;
+}
+
+void DosMemoryManager::write_mcb(const memory_block& b) {
+  auto mcb = mem_->ptr_zero<mcb_t>(b.start, 0);
+  mcb->chain = 'M';
+  mcb->num_paragraphs = b.size;
+  mcb->owner_segment = b.owner;
+  memset(mcb->program_name, ' ', sizeof(mcb->program_name));
+  strncpy(mcb->program_name, b.prog_name.c_str(), std::min<int>(b.prog_name.size(), 8));
 }
 
 Dos::Dos(door86::cpu::x86::CPU* cpu) : cpu_(cpu), mem_mgr(&cpu->memory) {
@@ -208,6 +218,9 @@ void Dos::int21(int, door86::cpu::x86::CPU& cpu) {
   // Get Interrupt Vector
   case 0x35: get_interrupt_vector(); break;
   case 0x40: dos_write(); break;
+  case 0x48: allocate(); break;
+  case 0x49: free(); break;
+  case 0x4a: realloc(); break;
   // terminate app.
   case 0x4c:
     VLOG(2) << "Terminate App";
@@ -246,6 +259,7 @@ void Dos::set_interrupt_vector() {
 
   cpu_->memory.set<uint16_t>(0, v * 4, off);
   cpu_->memory.set<uint16_t>(0, (v * 4) + 2, seg);
+  VLOG(2) << fmt::format("Set Interrupt Vector for: {:02X} -> {:04X}{:04X}", v, seg, off);
 }
 
 void Dos::display_char() { fputc(cpu_->core.regs.h.dl, stdout); }
@@ -279,28 +293,49 @@ void Dos::get_char() { cpu_->core.regs.h.al = static_cast<uint8_t>(fgetc(stdin))
 void Dos::dos_write() {
   VLOG(1) << "dos_write: ";
   const auto h = cpu_->core.regs.x.bx;
-  FILE* f = stdout;
-  if (h < 5) {
-    if (h == 2) {
-      f = stderr;
-    }
-  } else {
+  if (h >= 5) {
     LOG(WARNING) << "Writing to files not yet supported";
     return;
   }
+  FILE* f = (h == 2) ? stderr : stdout;
   auto* b = &cpu_->memory[(cpu_->core.sregs.ds * 0x10) + cpu_->core.regs.x.dx];
   fwrite(b, 1, cpu_->core.regs.x.cx, f);
 }
 
+void Dos::realloc() {
+
+}
+
+void Dos::allocate() {
+  // +1 to add the mcb
+  auto paragraphs = cpu_->core.regs.x.bx + 1;
+  if (const auto o = mem_mgr.allocate(paragraphs)) {
+    // skip MCB
+    cpu_->core.regs.x.ax = o.value() + 1;
+    cpu_->core.flags.cflag(false);
+    VLOG(2) << fmt::format("Freed DOS memory at segment: {:04X}", cpu_->core.regs.x.ax);
+  } else {
+    cpu_->core.flags.cflag(true);
+  }
+}
+
+void Dos::free() { 
+  auto seg = cpu_->core.regs.x.bx - 1; 
+  bool success = mem_mgr.free(seg);
+  cpu_->core.flags.cflag(!success);
+  VLOG(2) << fmt::format("Free DOS memory at segment: {:04X}; Success: {}", seg,
+                         success ? "true" : "false");
+}
 
 void Dos::memory_strategy() { 
-  switch (cpu_->core.regs.h.al) {
-  case 0: //get
-    cpu_->core.regs.x.bx = 2;
-    break;
-  case 1: // set
-    // DO nothing.
-    break;
+  if (cpu_->core.regs.h.al == 0) {
+    cpu_->core.regs.x.bx = (mem_mgr.strategy() == DosMemoryManager::fit_strategy_t::last) ? 2 : 0;
+    VLOG(2) << "Get Memory Strategy: " << cpu_->core.regs.x.bx;
+  } else if (cpu_->core.regs.h.al == 1) {
+    VLOG(2) << "Set Memory Strategy to: " << cpu_->core.regs.x.bx;
+    mem_mgr.strategy(
+        (cpu_->core.regs.x.bx == 2) ? DosMemoryManager::fit_strategy_t::last
+                                                 : DosMemoryManager::fit_strategy_t::first);
   }
 }
 
