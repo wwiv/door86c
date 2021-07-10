@@ -752,7 +752,7 @@ void CPU::scas_m8(const instruction_t& inst) {
   const auto b = memory.get<uint8_t>(core.sregs.es, core.regs.x.di);
   auto r = r8(&core.regs.h.al);
   r.cmp(b);
-  VLOG(4) << "SCAS: left: " << static_cast<int>(r.get()) << "; right: " << static_cast<int>(b)
+  VLOG(5) << "SCAS: left: " << static_cast<int>(r.get()) << "; right: " << static_cast<int>(b)
           << "; ZF: " << core.flags.zflag();
   core.regs.x.di += step;
 }
@@ -762,7 +762,7 @@ void CPU::scas_m16(const instruction_t& inst) {
   const auto b = memory.get<uint16_t>(core.sregs.es, core.regs.x.di);
   auto r = r16(&core.regs.x.ax);
   r.cmp(b);
-  VLOG(4) << "SCAS: left: " << static_cast<int>(r.get()) << "; right: " << static_cast<int>(b)
+  VLOG(5) << "SCAS: left: " << static_cast<int>(r.get()) << "; right: " << static_cast<int>(b)
           << "; ZF: " << core.flags.zflag();
   core.regs.x.di += step;
 }
@@ -936,6 +936,8 @@ void CPU::execute_0xC(const instruction_t& inst) {
   case 0xB: {
     core.ip = pop();
     core.sregs.cs = pop();
+    VLOG(1) << fmt::format("RETF and clear stack: num: {:02x}; SP: {:02x}", inst.disp16,
+                           core.regs.x.sp);
   } break;
   // "CD":"int imm8",
   case 0xC: call_interrupt(0x03); break;

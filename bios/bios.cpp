@@ -1,5 +1,7 @@
 #include "bios/bios.h"
 
+#include "fmt/format.h"
+
 namespace door86::bios {
 
 Bios::Bios(door86::cpu::x86::CPU* cpu) : cpu_(cpu) {
@@ -25,6 +27,11 @@ void Bios::int10(int, door86::cpu::x86::CPU&) {
     fputc(r.h.al, stdout);
     fflush(stdout);
   } break;
+  default:
+    // unhandled
+    LOG(WARNING) << "Unhandled BIOS Interrupt "
+                 << fmt::format("AH:{:02X}; AL:{:02X}", cpu_->core.regs.h.ah, cpu_->core.regs.h.al);
+
   } // switch
 }
 

@@ -230,8 +230,8 @@ void Dos::int21(int, door86::cpu::x86::CPU& cpu) {
   case 0x67: set_handle_count(); break;
   default: {
     // unhandled
-    VLOG(2) << "Unhandled DOS Interrupt "
-            << fmt::format("AH:{:02X}; AL:{:02X}", cpu_->core.regs.h.ah, cpu_->core.regs.h.al);
+    LOG(WARNING) << "Unhandled DOS Interrupt "
+                 << fmt::format("AH:{:02X}; AL:{:02X}", cpu_->core.regs.h.ah, cpu_->core.regs.h.al);
   } break;
   }
 }

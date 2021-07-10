@@ -107,11 +107,11 @@ bool Exe::load_image(uint16_t base_segment, door86::cpu::Memory& mem) {
   loaded_ = true;
   // fixup relo offsets
   for (const auto& relo : relos) {
-    VLOG(1) << "Relocating offset at: " << relo.segment << ":" << relo.offset;
     const uint32_t addr = (relo.segment * 0x10) + (image_seg * 0x10) + relo.offset;
     auto relo_seg = mem.abs16(addr);
-    relo_seg += image_seg;
-    mem.abs16(addr, relo_seg);
+    auto new_relo_seg = relo_seg + image_seg;
+    VLOG(1) << fmt::format("Relocating offset at: {:4X}:{:4X} to: {:4X}", relo.segment, relo.offset, new_relo_seg);
+    mem.abs16(addr, new_relo_seg);
   }
   return true;
 }
