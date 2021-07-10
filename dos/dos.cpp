@@ -93,10 +93,9 @@ bool Dos::initialize_process(const std::filesystem::path& filename) {
 
     cpu_->core.sregs.ds = seg;
     cpu_->core.sregs.es = seg;
-
     cpu_->core.sregs.cs = seg;
     cpu_->core.sregs.ss = seg;
-    cpu_->core.regs.x.sp = seg;
+    cpu_->core.regs.x.sp = 0xfffe;
     cpu_->core.ip = 0x100;
   }
 

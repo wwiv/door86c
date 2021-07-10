@@ -1381,7 +1381,7 @@ void CPU::push(uint16_t val) {
   // To push we decrement the stack pointer and then add it.
   core.regs.x.sp -= 2;
   // TODO(rushfan): assert if sp <= 0x0000
-  VLOG(1) << fmt::format("PUSH: val: {:02x}; SP: {:02x}", val, core.regs.x.sp);
+  VLOG(3) << fmt::format("PUSH: val: {:02x}; SP: {:02x}", val, core.regs.x.sp);
   memory.set<uint16_t>(core.sregs.ss, core.regs.x.sp, val);
 }
 
@@ -1389,7 +1389,7 @@ uint16_t CPU::pop() {
   const auto m = memory.get<uint16_t>(core.sregs.ss, core.regs.x.sp);
   core.regs.x.sp += 2; 
   // TODO(rushfan): assert if sp >= 0xffff
-  VLOG(1) << fmt::format("POP: val: {:02x}; SP: {:02x}", m, core.regs.x.sp);
+  VLOG(3) << fmt::format("POP: val: {:02x}; SP: {:02x}", m, core.regs.x.sp);
   return m;
 }
 

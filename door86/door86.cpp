@@ -56,7 +56,8 @@ int main(int argc, char** argv) {
   door86::dos::Dos dos(&cpu);
 
   if (!dos.initialize_process(filename)) {
-    LOG(WARNING) << "Failed to initialize DOS process";
+    LOG(ERROR) << "Failed to initialize DOS process";
+    return EXIT_FAILURE;
   }
   cpu.core.regs.x.ax = 2; // drive C
   const auto start = std::chrono::system_clock::now();
