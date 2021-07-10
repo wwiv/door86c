@@ -942,6 +942,13 @@ void CPU::execute_0xC(const instruction_t& inst) {
   // "CD":"int imm8",
   case 0xC: call_interrupt(0x03); break;
   case 0xD: call_interrupt(inst.imm8); break;
+  // CF: IRET: Interrupt return (16-bit operand size).
+  case 0xF: {
+    core.ip = pop();
+    core.sregs.cs = pop();
+    core.flags.value_ = pop();
+    VLOG(1) << fmt::format("IRET num: SP: {:02x}", core.regs.x.sp);
+  } break;
   default: LOG(WARNING) << fmt::format("Skipped OPCODE: 0x{:02x}", static_cast<int>(inst.op));
   }
 }
@@ -1047,19 +1054,19 @@ void CPU::execute_0xE(const instruction_t& inst) {
   switch (inst.op & 0x0f) {
   // LOOPNE rel8
   case 0x0: {
-    if (core.regs.x.cx-- == 0 && !core.flags.zflag()) {
+    if (core.regs.x.cx-- != 0 && !core.flags.zflag()) {
       core.ip += static_cast<int8_t>(inst.imm8);
     }
   } break;
   // LOOPE rel8
   case 0x1: {
-    if (core.regs.x.cx-- == 0 && core.flags.zflag()) {
+    if (core.regs.x.cx-- != 0 && core.flags.zflag()) {
       core.ip += static_cast<int8_t>(inst.imm8);
     }
   } break;
   // LOOP rel8
   case 0x2: {
-    if (core.regs.x.cx-- == 0) {
+    if (core.regs.x.cx-- != 0) {
       core.ip += static_cast<int8_t>(inst.imm8);
     }
   } break;
@@ -1257,12 +1264,32 @@ void CPU::execute_0xF(const instruction_t& inst) {
 }
 
 void CPU::call_interrupt(int num) {
+  // Check interrupt vectors first
+  auto off = memory.get<uint16_t>(0, num * 4);
+  auto seg = memory.get<uint16_t>(0, (num * 4) + 2);
+
+  push(core.flags.value_);
+  push(core.sregs.cs);
+  push(core.ip);
+
+  if (seg != 0x0000 || off != num) {
+    // We have a handler.
+    // It should do a IRET??
+    core.sregs.cs = seg;
+    core.ip = off;
+    return;
+  }
+
   if (auto fn = int_handlers_.find(num); fn != std::end(int_handlers_)) {
     fn->second(num, *this);
+    // restore stack after our implicit handler
+    core.ip = pop();
+    core.sregs.cs = pop();
+    core.flags.value_ = pop();
     return;
   }
   // static default fail safe handlers.
-  if (num >= 0x86 && num <= 0xF0) {
+  if ((num >= 0x86 && num <= 0xF0) || num == 0x3) {
     // INT 86 to F0: INT 86 to F0 - used by BASIC while in interpreter
     running_ = false;
     LOG(INFO) << "Exiting; Out of band Interrupt Num: 0x" << std::hex << num;
@@ -1270,6 +1297,10 @@ void CPU::call_interrupt(int num) {
     LOG(INFO) << fmt::format("Unhandled Interrupt Num: 0x{:02X} {:04X}:{:04X}", num, core.regs.h.ah,
                              core.regs.h.al);
   }
+  // Since we were unhandled, return to previous state
+  core.ip = pop();
+  core.sregs.cs = pop();
+  core.flags.value_ = pop();
 }
 
 bool CPU::run(uint16_t start_cs, uint16_t start_ip) {

@@ -35,7 +35,7 @@ bool Dos::initialize_process(const std::filesystem::path& filename) {
   }
 
   int code_offset = 0x100;
-  int memory_needed = 0xffff;
+  int memory_needed = 0x3fff; // in paragraphs
 
   const std::string env = R"(COMSPEC=Z:\DOS\COMMAND.COM\0)";
   const auto env_needed = static_cast<uint16_t>(((env.size() | 0x3F) + 1) * 2);
@@ -83,15 +83,21 @@ bool Dos::initialize_process(const std::filesystem::path& filename) {
       std::cout << "Failed to allocate memory: " << memory_needed;
       return EXIT_FAILURE;
     }
-    const auto psp_seg = oseg.value();
-    cpu_->core.sregs.ds = psp_seg;
-    cpu_->core.sregs.es = psp_seg;
+    const auto seg = oseg.value();
 
-    const auto seg = psp_seg + 0x100;
+    auto image_seg = seg + 0x10;
+
+    if (!door86::dos::load_image(filename, image_seg, 0, cpu_->memory)) {
+      return false;
+    }
+
+    cpu_->core.sregs.ds = seg;
+    cpu_->core.sregs.es = seg;
+
     cpu_->core.sregs.cs = seg;
     cpu_->core.sregs.ss = seg;
     cpu_->core.regs.x.sp = seg;
-    cpu_->core.ip = 0;
+    cpu_->core.ip = 0x100;
   }
 
   void* m = &cpu_->memory[cpu_->core.sregs.ds * 0x10];
