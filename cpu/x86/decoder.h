@@ -35,26 +35,31 @@ constexpr uint32_t op_mask_modrm16 = 0x20;
 constexpr uint32_t op_mask_modrm32 = 0x40;
 // Any register value refers to segment register not general register
 constexpr uint32_t op_mask_reg_is_sreg = 0x100;
-// uses a secondary opcode in the register
-constexpr uint32_t op_mask_so_opcode = 0x100;
+// uses a secondary opcode in the register (not used yet)
+constexpr uint32_t op_mask_so_opcode = 0x200;
+// Has both r and rm encoded in ModRM byte
+constexpr uint32_t op_mask_has_r_and_rm = 0x400;
 // Use ZF in rep for terminating the loop.
 constexpr uint32_t uses_rep_zf = 0x1000;
 // Used reg for subcodes
 constexpr uint32_t uses_reg_subcode = 0x2000;
+// Used reg for encoded register (+r)
+constexpr uint32_t uses_encoded_reg = 0x4000;
 
 // TODO(rushfan): Add metadata for (a) is multiplexed byte with reg, is rep_allowed, 
 
 // this one is not yet implemented
 constexpr uint32_t op_mask_notimpl = 0x80000000;
 
-enum class op_enc_t { none, r_rm, rm_r, rm_i, r_i };
+enum class op_enc_t { none, rm_r, r_rm, rm_i, r_i };
 
 struct op_code_data_t {
   uint8_t op;
   uint32_t mask;
   std::string name;
   int bits{16}; // 8, 16, etc/
-  op_enc_t op_enc{op_enc_t::rm_r};
+  op_enc_t op_enc{op_enc_t::none};
+  uint8_t r_base{0};
 };
 
 class instruction_t {

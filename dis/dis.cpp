@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
   CommandLine cmdline(argc, argv, "");
   cmdline.add_argument(BooleanCommandLineArgument{"header", 'H', "Display EXE Header information.", true});
   cmdline.add_argument(BooleanCommandLineArgument{"disasm", 'D', "Display Byte information.", false});
-  cmdline.add_argument({"format", 'F', "Format for byte information. (code | hex)", "hex"});
+  cmdline.add_argument({"format", 'F', "Format for byte information. (code | hex)", "code"});
   // Ignore this one. used by logger
   cmdline.add_argument({"v", "verbose log", "0"});
   cmdline.set_no_args_allowed(true);

@@ -12,108 +12,108 @@ namespace door86::cpu::x86 {
 std::vector<op_code_data_t> create_opcode_metadata() {
   std::vector<op_code_data_t> v{
       // First Octet
-      {0x00, op_mask_modrm8, "ADD", 8},
-      {0x01, op_mask_modrm16, "ADD"},
-      {0x02, op_mask_modrm8, "ADD", 8},
-      {0x03, op_mask_modrm16, "ADD"},
+      {0x00, op_mask_modrm8 | op_mask_has_r_and_rm, "ADD", 8},
+      {0x01, op_mask_modrm16 | op_mask_has_r_and_rm, "ADD"},
+      {0x02, op_mask_modrm8 | op_mask_has_r_and_rm, "ADD", 8},
+      {0x03, op_mask_modrm16 | op_mask_has_r_and_rm, "ADD"},
       {0x04, op_mask_imm8, "ADD", 8},
       {0x05, op_mask_imm16, "ADD"},
       {0x06, op_mask_none, "PUSH ES"},
       {0x07, op_mask_none, "POP ES"},
       // Next Octet
-      {0x08, op_mask_modrm8, "OR", 8},
-      {0x09, op_mask_modrm16, "OR"},
-      {0x0a, op_mask_modrm8, "OR", 8},
-      {0x0b, op_mask_modrm16, "OR"},
+      {0x08, op_mask_modrm8 | op_mask_has_r_and_rm, "OR", 8},
+      {0x09, op_mask_modrm16 | op_mask_has_r_and_rm, "OR"},
+      {0x0a, op_mask_modrm8 | op_mask_has_r_and_rm, "OR", 8},
+      {0x0b, op_mask_modrm16 | op_mask_has_r_and_rm, "OR"},
       {0x0c, op_mask_imm8, "OR", 8},
       {0x0d, op_mask_imm16, "OR"},
       {0x0e, op_mask_none, "PUSH CS"},
       {0x0f, op_mask_none, "POP CS"},
 
-      {0x10, op_mask_modrm8, "ADC", 8},
-      {0x11, op_mask_modrm16, "ADC"},
-      {0x12, op_mask_modrm8, "ADC", 8},
-      {0x13, op_mask_modrm16, "ADC"},
+      {0x10, op_mask_modrm8 | op_mask_has_r_and_rm, "ADC", 8},
+      {0x11, op_mask_modrm16 | op_mask_has_r_and_rm, "ADC"},
+      {0x12, op_mask_modrm8 | op_mask_has_r_and_rm, "ADC", 8},
+      {0x13, op_mask_modrm16 | op_mask_has_r_and_rm, "ADC"},
       {0x14, op_mask_imm8, "ADC", 8},
       {0x15, op_mask_imm16, "ADC"},
       {0x16, op_mask_none, "PUSH SS"},
       {0x17, op_mask_none, "POP SS"},
-      {0x18, op_mask_modrm8, "SBB", 8},
-      {0x19, op_mask_modrm16, "SBB"},
-      {0x1a, op_mask_modrm8, "SBB", 8},
-      {0x1b, op_mask_modrm16, "SBB"},
+      {0x18, op_mask_modrm8 | op_mask_has_r_and_rm, "SBB", 8},
+      {0x19, op_mask_modrm16 | op_mask_has_r_and_rm, "SBB"},
+      {0x1a, op_mask_modrm8 | op_mask_has_r_and_rm, "SBB", 8},
+      {0x1b, op_mask_modrm16 | op_mask_has_r_and_rm, "SBB"},
       {0x1c, op_mask_imm8, "SBB", 8},
       {0x1d, op_mask_imm16, "SBB"},
       {0x1e, op_mask_none, "PUSH DS"},
       {0x1f, op_mask_none, "POP DS"},
 
-      {0x20, op_mask_modrm8, "AND", 8},
-      {0x21, op_mask_modrm16, "AND"},
-      {0x22, op_mask_modrm8, "AND", 8},
-      {0x23, op_mask_modrm16, "AND"},
+      {0x20, op_mask_modrm8 | op_mask_has_r_and_rm, "AND", 8},
+      {0x21, op_mask_modrm16 | op_mask_has_r_and_rm, "AND"},
+      {0x22, op_mask_modrm8 | op_mask_has_r_and_rm, "AND", 8},
+      {0x23, op_mask_modrm16 | op_mask_has_r_and_rm, "AND"},
       {0x24, op_mask_imm8, "AND", 8},
       {0x25, op_mask_imm16, "AND"},
       {0x26, op_mask_notimpl, ""},
       {0x27, op_mask_notimpl, ""},
-      {0x28, op_mask_modrm8, "SUB", 8},
-      {0x29, op_mask_modrm16, "SUB"},
-      {0x2a, op_mask_modrm8, "SUB", 8},
-      {0x2b, op_mask_modrm16, "SUB"},
+      {0x28, op_mask_modrm8 | op_mask_has_r_and_rm, "SUB", 8},
+      {0x29, op_mask_modrm16 | op_mask_has_r_and_rm, "SUB"},
+      {0x2a, op_mask_modrm8 | op_mask_has_r_and_rm, "SUB", 8},
+      {0x2b, op_mask_modrm16 | op_mask_has_r_and_rm, "SUB"},
       {0x2c, op_mask_imm8, "SUB", 8},
       {0x2d, op_mask_imm16, "SUB"},
       {0x2e, op_mask_notimpl, ""},
       {0x2f, op_mask_notimpl, ""},
 
-      {0x30, op_mask_modrm8, "XOR", 8, op_enc_t::rm_r},
-      {0x31, op_mask_modrm16, "XOR", 16, op_enc_t::rm_r},
-      {0x32, op_mask_modrm8, "XOR", 8, op_enc_t::r_rm},
-      {0x33, op_mask_modrm16, "XOR", 16, op_enc_t::r_rm},
+      {0x30, op_mask_modrm8 | op_mask_has_r_and_rm, "XOR", 8, op_enc_t::rm_r},
+      {0x31, op_mask_modrm16 | op_mask_has_r_and_rm, "XOR", 16, op_enc_t::rm_r},
+      {0x32, op_mask_modrm8 | op_mask_has_r_and_rm, "XOR", 8, op_enc_t::r_rm},
+      {0x33, op_mask_modrm16 | op_mask_has_r_and_rm, "XOR", 16, op_enc_t::r_rm},
       {0x34, op_mask_imm8, "XOR", 8, op_enc_t::r_i},
       {0x35, op_mask_imm16, "XOR", 16, op_enc_t::r_i},
       {0x36, op_mask_notimpl, ""},
       {0x37, op_mask_notimpl, ""},
-      {0x38, op_mask_modrm8, "CMP", 8},
-      {0x39, op_mask_modrm16, "CMP"},
-      {0x3a, op_mask_modrm8, "CMP", 8},
-      {0x3b, op_mask_modrm16, "CMP"},
+      {0x38, op_mask_modrm8 | op_mask_has_r_and_rm, "CMP", 8},
+      {0x39, op_mask_modrm16 | op_mask_has_r_and_rm, "CMP"},
+      {0x3a, op_mask_modrm8 | op_mask_has_r_and_rm, "CMP", 8},
+      {0x3b, op_mask_modrm16 | op_mask_has_r_and_rm, "CMP"},
       {0x3C, op_mask_imm8, "CMP", 8},
       {0x3D, op_mask_imm16, "CMP"},
       {0x3e, op_mask_notimpl, ""},
       {0x3f, op_mask_notimpl, ""},
 
-      {0x40, op_mask_none, "INC"},
-      {0x41, op_mask_none, "INC"},
-      {0x42, op_mask_none, "INC"},
-      {0x43, op_mask_none, "INC"},
-      {0x44, op_mask_none, "INC"},
-      {0x45, op_mask_none, "INC"},
-      {0x46, op_mask_none, "INC"},
-      {0x47, op_mask_none, "INC"},
-      {0x48, op_mask_none, "DEC"},
-      {0x49, op_mask_none, "DEC"},
-      {0x4a, op_mask_none, "DEC"},
-      {0x4b, op_mask_none, "DEC"},
-      {0x4c, op_mask_none, "DEC"},
-      {0x4d, op_mask_none, "DEC"},
-      {0x4e, op_mask_none, "DEC"},
-      {0x4f, op_mask_none, "DEC"},
+      {0x40, op_mask_none | uses_encoded_reg, "INC", 16, op_enc_t::none, 0x40},
+      {0x41, op_mask_none | uses_encoded_reg, "INC", 16, op_enc_t::none, 0x40},
+      {0x42, op_mask_none | uses_encoded_reg, "INC", 16, op_enc_t::none, 0x40},
+      {0x43, op_mask_none | uses_encoded_reg, "INC", 16, op_enc_t::none, 0x40},
+      {0x44, op_mask_none | uses_encoded_reg, "INC", 16, op_enc_t::none, 0x40},
+      {0x45, op_mask_none | uses_encoded_reg, "INC", 16, op_enc_t::none, 0x40},
+      {0x46, op_mask_none | uses_encoded_reg, "INC", 16, op_enc_t::none, 0x40},
+      {0x47, op_mask_none | uses_encoded_reg, "INC", 16, op_enc_t::none, 0x40},
+      {0x48, op_mask_none | uses_encoded_reg, "DEC", 16, op_enc_t::none, 0x48},
+      {0x49, op_mask_none | uses_encoded_reg, "DEC", 16, op_enc_t::none, 0x48},
+      {0x4a, op_mask_none | uses_encoded_reg, "DEC", 16, op_enc_t::none, 0x48},
+      {0x4b, op_mask_none | uses_encoded_reg, "DEC", 16, op_enc_t::none, 0x48},
+      {0x4c, op_mask_none | uses_encoded_reg, "DEC", 16, op_enc_t::none, 0x48},
+      {0x4d, op_mask_none | uses_encoded_reg, "DEC", 16, op_enc_t::none, 0x48},
+      {0x4e, op_mask_none | uses_encoded_reg, "DEC", 16, op_enc_t::none, 0x48},
+      {0x4f, op_mask_none | uses_encoded_reg, "DEC", 16, op_enc_t::none, 0x48},
 
-      {0x50, op_mask_none, "PUSH"},
-      {0x51, op_mask_none, "PUSH"},
-      {0x52, op_mask_none, "PUSH"},
-      {0x53, op_mask_none, "PUSH"},
-      {0x54, op_mask_none, "PUSH"},
-      {0x55, op_mask_none, "PUSH"},
-      {0x56, op_mask_none, "PUSH"},
-      {0x57, op_mask_none, "PUSH"},
-      {0x58, op_mask_none, "POP"},
-      {0x59, op_mask_none, "POP"},
-      {0x5a, op_mask_none, "POP"},
-      {0x5b, op_mask_none, "POP"},
-      {0x5c, op_mask_none, "POP"},
-      {0x5d, op_mask_none, "POP"},
-      {0x5e, op_mask_none, "POP"},
-      {0x5f, op_mask_none, "POP"},
+      {0x50, op_mask_none | uses_encoded_reg, "PUSH", 16, op_enc_t::none, 0x50},
+      {0x51, op_mask_none | uses_encoded_reg, "PUSH", 16, op_enc_t::none, 0x50},
+      {0x52, op_mask_none | uses_encoded_reg, "PUSH", 16, op_enc_t::none, 0x50},
+      {0x53, op_mask_none | uses_encoded_reg, "PUSH", 16, op_enc_t::none, 0x50},
+      {0x54, op_mask_none | uses_encoded_reg, "PUSH", 16, op_enc_t::none, 0x50},
+      {0x55, op_mask_none | uses_encoded_reg, "PUSH", 16, op_enc_t::none, 0x50},
+      {0x56, op_mask_none | uses_encoded_reg, "PUSH", 16, op_enc_t::none, 0x50},
+      {0x57, op_mask_none | uses_encoded_reg, "PUSH", 16, op_enc_t::none, 0x50},
+      {0x58, op_mask_none | uses_encoded_reg, "POP", 16, op_enc_t::none, 0x58},
+      {0x59, op_mask_none | uses_encoded_reg, "POP", 16, op_enc_t::none, 0x58},
+      {0x5a, op_mask_none | uses_encoded_reg, "POP", 16, op_enc_t::none, 0x58},
+      {0x5b, op_mask_none | uses_encoded_reg, "POP", 16, op_enc_t::none, 0x58},
+      {0x5c, op_mask_none | uses_encoded_reg, "POP", 16, op_enc_t::none, 0x58},
+      {0x5d, op_mask_none | uses_encoded_reg, "POP", 16, op_enc_t::none, 0x58},
+      {0x5e, op_mask_none | uses_encoded_reg, "POP", 16, op_enc_t::none, 0x58},
+      {0x5f, op_mask_none | uses_encoded_reg, "POP", 16, op_enc_t::none, 0x58},
 
       {0x60, op_mask_none, "PUSHA"},
       {0x61, op_mask_none, "POPA"},
@@ -124,9 +124,9 @@ std::vector<op_code_data_t> create_opcode_metadata() {
       {0x66, op_mask_notimpl, ""},
       {0x67, op_mask_notimpl, ""},
       {0x68, op_mask_imm16, "PUSH"},
-      {0x69, op_mask_notimpl, ""},
+      {0x69, op_mask_notimpl | op_mask_has_r_and_rm, ""},
       {0x6a, op_mask_imm8, "PUSH", 8},
-      {0x6b, op_mask_notimpl, ""},
+      {0x6b, op_mask_notimpl | op_mask_has_r_and_rm, ""},
       {0x6c, op_mask_notimpl | uses_rep_zf, ""},
       {0x6d, op_mask_notimpl | uses_rep_zf, ""},
       {0x6e, op_mask_notimpl | uses_rep_zf, ""},
@@ -154,29 +154,30 @@ std::vector<op_code_data_t> create_opcode_metadata() {
       {0x82, op_mask_notimpl | op_mask_modrm8 | uses_reg_subcode, "0x82/M", 8},
       // 8 didn't seem right here since we use a modrm16
       {0x83, op_mask_modrm16 | op_mask_imm8 | uses_reg_subcode, "0x83/M", 16},
-      {0x84, op_mask_modrm8, "TEST", 8},
-      {0x85, op_mask_modrm16, "TEST", 16},
-      {0x86, op_mask_modrm8, "XCHG", 8},
-      {0x87, op_mask_modrm16, "XCHG", 16},
+      {0x84, op_mask_modrm8 | op_mask_has_r_and_rm, "TEST", 8},
+      {0x85, op_mask_modrm16 | op_mask_has_r_and_rm, "TEST", 16},
+      {0x86, op_mask_modrm8 | op_mask_has_r_and_rm, "XCHG", 8},
+      {0x87, op_mask_modrm16 | op_mask_has_r_and_rm, "XCHG", 16},
 
       // TODO: add the 80s for ADD
-      {0x88, op_mask_modrm8, "MOV", 8},
-      {0x89, op_mask_modrm16, "MOV"},
-      {0x8A, op_mask_modrm8, "MOV", 8},
-      {0x8B, op_mask_modrm16, "MOV"},
-      {0x8C, op_mask_modrm16 | op_mask_reg_is_sreg, "MOV", 16},
-      {0x8D, op_mask_modrm16, "LEA", 16, op_enc_t::r_rm},
-      {0x8E, op_mask_modrm16 | op_mask_reg_is_sreg, "MOV", 16, op_enc_t::r_rm},
+      {0x88, op_mask_modrm8 | op_mask_has_r_and_rm, "MOV", 8},
+      {0x89, op_mask_modrm16 | op_mask_has_r_and_rm, "MOV"},
+      {0x8A, op_mask_modrm8 | op_mask_has_r_and_rm, "MOV", 8},
+      {0x8B, op_mask_modrm16 | op_mask_has_r_and_rm, "MOV"},
+      {0x8C, op_mask_modrm16 | op_mask_has_r_and_rm | op_mask_reg_is_sreg, "MOV", 16},
+      {0x8D, op_mask_modrm16 | op_mask_has_r_and_rm, "LEA", 16, op_enc_t::r_rm},
+      {0x8E, op_mask_modrm16 | op_mask_has_r_and_rm | op_mask_reg_is_sreg, "MOV", 16,
+       op_enc_t::r_rm},
       {0x8F, op_mask_notimpl | op_mask_modrm16, ""},
 
-      {0x90, op_mask_none, "XCHG"},
-      {0x91, op_mask_none, "XCHG"},
-      {0x92, op_mask_none, "XCHG"},
-      {0x93, op_mask_none, "XCHG"},
-      {0x94, op_mask_none, "XCHG"},
-      {0x95, op_mask_none, "XCHG"},
-      {0x96, op_mask_none, "XCHG"},
-      {0x97, op_mask_none, "XCHG"},
+      {0x90, op_mask_none | uses_encoded_reg, "XCHG", 16, op_enc_t::none, 0x90},
+      {0x91, op_mask_none | uses_encoded_reg, "XCHG", 16, op_enc_t::none, 0x90},
+      {0x92, op_mask_none | uses_encoded_reg, "XCHG", 16, op_enc_t::none, 0x90},
+      {0x93, op_mask_none | uses_encoded_reg, "XCHG", 16, op_enc_t::none, 0x90},
+      {0x94, op_mask_none | uses_encoded_reg, "XCHG", 16, op_enc_t::none, 0x90},
+      {0x95, op_mask_none | uses_encoded_reg, "XCHG", 16, op_enc_t::none, 0x90},
+      {0x96, op_mask_none | uses_encoded_reg, "XCHG", 16, op_enc_t::none, 0x90},
+      {0x97, op_mask_none | uses_encoded_reg, "XCHG", 16, op_enc_t::none, 0x90},
       {0x98, op_mask_none, "CBW"},
       {0x99, op_mask_none, "CWD"},
       {0x9a, op_mask_notimpl, ""},
@@ -204,29 +205,29 @@ std::vector<op_code_data_t> create_opcode_metadata() {
       {0xAF, uses_rep_zf, "SCAS", 16},
 
       // MOV with operand encoded in instruction
-      {0xB0, op_mask_imm8, "MOV", 8},
-      {0xB1, op_mask_imm8, "MOV", 8},
-      {0xB2, op_mask_imm8, "MOV", 8},
-      {0xB3, op_mask_imm8, "MOV", 8},
-      {0xB4, op_mask_imm8, "MOV", 8},
-      {0xB5, op_mask_imm8, "MOV", 8},
-      {0xB6, op_mask_imm8, "MOV", 8},
-      {0xB7, op_mask_imm8, "MOV", 8},
-      {0xB8, op_mask_imm16, "MOV"},
-      {0xB9, op_mask_imm16, "MOV"},
-      {0xBA, op_mask_imm16, "MOV"},
-      {0xBB, op_mask_imm16, "MOV"},
-      {0xBC, op_mask_imm16, "MOV"},
-      {0xBD, op_mask_imm16, "MOV"},
-      {0xBE, op_mask_imm16, "MOV"},
-      {0xBF, op_mask_imm16, "MOV"},
+      {0xB0, uses_encoded_reg | op_mask_imm8, "MOV", 8, op_enc_t::none, 0xB0},
+      {0xB1, uses_encoded_reg | op_mask_imm8, "MOV", 8, op_enc_t::none, 0xB0},
+      {0xB2, uses_encoded_reg | op_mask_imm8, "MOV", 8, op_enc_t::none, 0xB0},
+      {0xB3, uses_encoded_reg | op_mask_imm8, "MOV", 8, op_enc_t::none, 0xB0},
+      {0xB4, uses_encoded_reg | op_mask_imm8, "MOV", 8, op_enc_t::none, 0xB0},
+      {0xB5, uses_encoded_reg | op_mask_imm8, "MOV", 8, op_enc_t::none, 0xB0},
+      {0xB6, uses_encoded_reg | op_mask_imm8, "MOV", 8, op_enc_t::none, 0xB0},
+      {0xB7, uses_encoded_reg | op_mask_imm8, "MOV", 8, op_enc_t::none, 0xB0},
+      {0xB8, uses_encoded_reg | op_mask_imm16, "MOV", 16, op_enc_t::none, 0xB8},
+      {0xB9, uses_encoded_reg | op_mask_imm16, "MOV", 16, op_enc_t::none, 0xB8},
+      {0xBA, uses_encoded_reg | op_mask_imm16, "MOV", 16, op_enc_t::none, 0xB8},
+      {0xBB, uses_encoded_reg | op_mask_imm16, "MOV", 16, op_enc_t::none, 0xB8},
+      {0xBC, uses_encoded_reg | op_mask_imm16, "MOV", 16, op_enc_t::none, 0xB8},
+      {0xBD, uses_encoded_reg | op_mask_imm16, "MOV", 16, op_enc_t::none, 0xB8},
+      {0xBE, uses_encoded_reg | op_mask_imm16, "MOV", 16, op_enc_t::none, 0xB8},
+      {0xBF, uses_encoded_reg | op_mask_imm16, "MOV", 16, op_enc_t::none, 0xB8},
 
       {0xC0, op_mask_modrm8 | op_mask_imm8| uses_reg_subcode, "0xC0/M", 8},
       {0xC1, op_mask_modrm16 | uses_reg_subcode | op_mask_imm8, "0xC1/M"},
       {0xC2, op_mask_imm16, "RET"},
       {0xC3, op_mask_none, "RET"},
-      {0xC4, op_mask_modrm16, "LES"},
-      {0xC5, op_mask_modrm16, "LDS"},
+      {0xC4, op_mask_modrm16 | op_mask_has_r_and_rm, "LES"},
+      {0xC5, op_mask_modrm16 | op_mask_has_r_and_rm, "LDS"},
       {0xC6, op_mask_modrm8 | op_mask_imm8, "MOV", 8},
       {0xC7, op_mask_modrm16 | op_mask_imm16, "MOV"},
       {0xC8, op_mask_notimpl, ""},
@@ -293,12 +294,12 @@ std::vector<op_code_data_t> create_opcode_metadata() {
 
   // Fixup bits
   for (auto& o : v) {
-    if ((o.mask & op_mask_imm8) || (o.mask & op_mask_modrm8)) {
+    if (o.mask & op_mask_modrm8) {
       if (o.bits != 8) {
         VLOG(2) << "Let's fix 8-bit for: " << std::hex << static_cast<int>(o.op);
         o.bits = 8;
       }
-    } else if (((o.mask & op_mask_imm16) || (o.mask & op_mask_modrm16)) && o.bits != 16) {
+    } else if ((o.mask & op_mask_modrm16) && o.bits != 16) {
       VLOG(2) << "Let's fix 16-bit for: " << std::hex << static_cast<int>(o.op);
       o.bits = 16;
     }
@@ -486,67 +487,40 @@ std::string rmreg_sreg_to_string(uint8_t reg) {
 static char* ea012[] = {"[BX + SI]", "[BX + DI]", "[BP + SI]", "[BP + DI]",
                         "[SI]",      "[DI]",      "[BP]",      "[BX]"};
 
-static char* mod_disp[] = {"", "disp8", "disp16"};
-
-std::string rm_to_string(const reg_mod_rm& rm, int bits, uint8_t operand8, uint16_t operand16) {
+static std::string rm_to_string(const reg_mod_rm& rm, const op_code_data_t& metadata, uint16_t disp8,
+                                uint16_t disp16) {
 
   if (rm.mod == 0 && rm.rm == 0x06) {
-    return fmt::format("{}", operand16);
+    return fmt::format("[+{:04X}]", disp16);
   }
   if (rm.mod == 0) {
-    return ea012[rm.rm];
+    return fmt::format("[{}]", ea012[rm.rm]);
   }
-  if (rm.mod < 3) {
-    return fmt::format("{}+{} ({})", ea012[rm.rm], operand16, mod_disp[rm.mod]);
+  if (rm.mod == 1) {
+    return fmt::format("[{}+{:02X}]", ea012[rm.rm], disp8);
   }
-  if (rm.mod == 3 && bits == 8) {
-    return rmreg8_to_string(rm.reg);
+  if (rm.mod == 2) {
+    return fmt::format("[{}+{:04X}]", ea012[rm.rm], disp16);
   }
-  if (rm.mod == 3 && bits == 16) {
-    return rmreg16_to_string(rm.reg);
+  if (rm.mod == 3 && metadata.bits == 8) {
+    return rmreg8_to_string(rm.rm);
+  }
+  if (rm.mod == 3 && metadata.bits == 16) {
+    return rmreg16_to_string(rm.rm);
   }
   return {};
 }
 
-/*
- std::string Decoder::to_string(const instruction_t& i) {
-  const auto& op = op_data_[i.op];
-  std::ostringstream ss;
-  ss << (op.name.empty() ? "???" : op.name) << " ";
-  if (has_modrm(op.mask)) {
-    std::string operand;
-    std::string rm_reg;
-    if (op.mask & op_mask_reg_is_sreg) {
-      rm_reg = rmreg_sreg_to_string(i.mdrm.reg);
-    } else {
-      if (op.bits == 8) {
-        rm_reg = rmreg8_to_string(i.mdrm.reg);
-      } else {
-        rm_reg = rmreg16_to_string(i.mdrm.reg);
-      }
-    }
-    if (has_modrm_operand8(i.mdrm)) {
-      operand = rm_to_string(i.mdrm, 8, i.operand8, 0);
-    } else if (has_modrm_operand16(i.mdrm)) {
-      operand = rm_to_string(i.mdrm, 16, 0, i.operand16);
-    } else if (has_modrm_register_value(i.mdrm)) {
-      operand = rmreg16_to_string(i.mdrm.rm);
-    }
-    if (op.op_enc == op_enc_t::r_rm) {
-      ss << rm_reg << ", " << operand;
-    } else if (op.op_enc == op_enc_t::rm_r) {
-      ss << operand << ", " << rm_reg;
-    }
-    ss << " ";
+static std::string r_to_string(const reg_mod_rm& rm, const op_code_data_t& metadata) {
+
+  if (metadata.mask & op_mask_reg_is_sreg) {
+    return rmreg_sreg_to_string(rm.reg);
   }
-  if (op.mask & op_mask_imm8) {
-    ss << fmt::format("{:02x} ", i.operand8);
-  } else if (op.mask & op_mask_imm16) {
-    ss << fmt::format("{:02x} ", i.operand16);
+  if (metadata.bits == 8) {
+    return rmreg8_to_string(rm.reg);
   }
-  return ss.str();
+  return rmreg16_to_string(rm.reg);
 }
-*/
 
 Decoder::Decoder(bool save_bytes) : op_data_(create_opcode_metadata()), save_bytes_(save_bytes) {}
 
@@ -554,55 +528,56 @@ std::string instruction_t::DebugString() const {
   static std::vector<char*> reg16 = {"AX", "CX", "DX", "BX", "SP", "BP", "SI", "DI"};
   static std::vector<char*> reg8 = {"AL", "CL", "DL", "BL", "AH", "CH", "DH", "BH"};
 
-  std::string rs;
+  std::ostringstream ss;
+  if (!bytes.empty()) {
+    auto bs = fmt::format("{:02X}", fmt::join(bytes, ""));
+    ss << fmt::format("{:10}", bs);
+  };
+  //ss << fmt::format("[len:{}] ", len);
+
   if (rep) {
-    rs = "[REP]";
+    ss <<"[REP]";
   } else if (repne) {
-    rs = "[REPNE]";
+    ss << "[REPNE]";
   }
   if (seg_override.has_value()) {
-    rs += fmt::format("[SO:{}]", segment_names.at(static_cast<int>(seg_index())));
+    ss << fmt::format("[SO:{}] ", segment_names.at(static_cast<int>(seg_index())));
   }
-  std::string r;
-  std::string disp;
-  std::string imm;
-  auto name = metadata.name;
+  ss << metadata.name << " ";
   if (metadata.mask & uses_reg_subcode) {
-    name.push_back('/');
-    name.push_back('0' + mdrm.reg);
+    ss << fmt::format("/{:d} ", mdrm.reg);
   }
-  std::string bs;
-  if (!bytes.empty()) {
-    bs = fmt::format("{:02X}", fmt::join(bytes, ""));
+  if (metadata.mask & uses_encoded_reg) {
+    if (metadata.bits == 8) {
+      ss << rmreg8_to_string(op - metadata.r_base) << " ";
+    } else {
+      ss << rmreg16_to_string(op - metadata.r_base) << " ";
+    }
   }
   if (has_modrm()) {
-    if (has_modrm_register_value(mdrm)) {
-      r = metadata.bits == 8 ? fmt::format(" r:{}", reg8[mdrm.reg])
-                             : fmt::format(" r:{}", reg16[mdrm.reg]);
-      if (metadata.mask & op_mask_reg_is_sreg) {
-        r = fmt::format(" r:{}", segment_names.at(mdrm.reg));
+    switch (metadata.op_enc) {
+    case op_enc_t::r_rm:
+      ss << r_to_string(mdrm, metadata) << ", ";
+      ss << rm_to_string(mdrm, metadata, disp8, disp16);
+      break;
+    case op_enc_t::rm_r:
+      ss << r_to_string(mdrm, metadata) << ", " << rm_to_string(mdrm, metadata, disp8, disp16);
+      break;
+    default: {
+      if (metadata.mask & op_mask_has_r_and_rm) {
+        ss << r_to_string(mdrm, metadata) << ", ";
       }
-    } else if (metadata.mask & op_mask_reg_is_sreg) {
-      r = fmt::format(" r:{}", rmreg_sreg_to_string(mdrm.reg));
-    } else {
-      if (metadata.bits == 8) {
-        r = fmt::format(" r:{}", rmreg8_to_string(mdrm.reg));
-      } else {
-        r = fmt::format(" r:{}", rmreg16_to_string(mdrm.reg));
-      }
-    }
-    if ((mdrm.rm == 0x06 && mdrm.mod == 0) || mdrm.mod == 0x02) {
-      disp = fmt::format(" disp:{:04X}, ", disp16);
-    } else if (mdrm.mod == 0x01) {
-      disp = fmt::format(" disp:{:02X}, ", disp8);
-    }
+      ss << rm_to_string(mdrm, metadata, disp8, disp16);
+    } break;
+    };
+    ss << " ";
   }
   if (metadata.mask & op_mask_imm8) {
-    imm = fmt::format(" imm:{:02X}, ", imm8);
+    ss << fmt::format("0x{:02X} ", imm8);
   } else if (metadata.mask & op_mask_imm16) {
-    imm = fmt::format(" imm:{:04X}, ", imm16);
+    ss << fmt::format("0x{:04X} ", imm16);
   }
-  return fmt::format("{:10} [len:{}]{} 0x{:02X}/{}{}{}", bs, len, rs, op, name, r, imm);
+  return ss.str();
 }
 
 } // namespace door86::cpu::x86
