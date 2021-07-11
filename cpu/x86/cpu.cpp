@@ -771,23 +771,19 @@ void CPU::execute_0xA(const instruction_t& inst) {
   switch (inst.op & 0x0f) {
   case 0x0: {
     const auto seg = core.sregs.get(inst.seg_index());
-    // offset is inst.imm8
-    core.regs.h.al = memory.get<uint8_t>(seg, inst.imm8);
+    core.regs.h.al = memory.get<uint8_t>(seg, inst.imm16);
   } break;
   case 0x1: {
     const auto seg = core.sregs.get(inst.seg_index());
-    // offset is inst.imm16
     core.regs.x.ax = memory.get<uint16_t>(seg, inst.imm16);
   } break;
   case 0x2: {
     const auto seg = core.sregs.get(inst.seg_index());
-    // offset is inst.imm8
-    memory.set<uint8_t>(seg, inst.imm8, core.regs.h.al);
+    memory.set<uint8_t>(seg, inst.imm16, core.regs.h.al);
   } break;
   //  mov [seg:off],ax
   case 0x3: {
     const auto seg = core.sregs.get(inst.seg_index());
-    // offset is inst.imm16
     memory.set<uint16_t>(seg, inst.imm16, core.regs.x.ax);
   } break;
   // MOVS m8, m8

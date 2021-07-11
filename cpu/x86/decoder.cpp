@@ -187,9 +187,9 @@ std::vector<op_code_data_t> create_opcode_metadata() {
       {0x9e, op_mask_notimpl, ""},
       {0x9f, op_mask_notimpl, ""},
 
-      {0xA0, op_mask_imm8, "MOV", 8},
+      {0xA0, op_mask_imm16, "MOV", 8},
       {0xA1, op_mask_imm16, "MOV", 16},
-      {0xA2, op_mask_imm8, "MOV", 8},
+      {0xA2, op_mask_imm16, "MOV", 8},
       {0xA3, op_mask_imm16, "MOV", 16},
       {0xA4, uses_rep_zf, "MOVS", 8},
       {0xA5, uses_rep_zf, "MOVS", 16},
