@@ -5,7 +5,7 @@ include(GoogleTest)
 
 add_library(dbg
   "debugger.cpp"
-)
+  "lame_debugger.cpp")
 target_link_libraries(dbg PRIVATE fmt::fmt-header-only)
 
 #add_executable(dos_tests 

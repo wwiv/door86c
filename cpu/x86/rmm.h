@@ -6,6 +6,10 @@
 #include <cstdint>
 #include <type_traits>
 
+#ifdef max
+#undef max
+#endif
+
 // Start with instructons needed for hello world in asm, then expand
 // to these, then on to others as needed.
 // https://github.com/xem/minix86/blob/gh-pages/src/instructions.js

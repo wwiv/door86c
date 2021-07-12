@@ -7,6 +7,8 @@
 #include "cpu/x86/decoder.h"
 #include "cpu/x86/regs.h"
 #include "cpu/x86/rmm.h"
+
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <map>
@@ -93,10 +95,6 @@ public:
 
   // flags
 
-  // flags for OF, SF, ZF, AF, PF CF for 8 bit values
-  void parity_szp8(uint8_t oval, uint8_t nval);
-  void parity_szp16(uint16_t oval, uint16_t nval);
-
   // Interrupts
   std::map<int, std::function<void(int num, CPU& cpu)>>& int_handlers() { return int_handlers_; }
 
@@ -106,6 +104,7 @@ public:
   Decoder decoder;
   Memory memory;
   IO io;
+  std::atomic<bool> debugger_attached;
 
   // Helpers
 private:

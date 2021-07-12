@@ -1369,6 +1369,10 @@ bool CPU::execute(const instruction_t& inst) {
       }
     }
   } while (!done);
+  if (debugger_attached.load()) {
+    // Use int1 as the step interrupt if we have a debugger attached for now.
+    call_interrupt(0x01);
+  }
   return true;
 }
 
@@ -1387,21 +1391,6 @@ uint16_t CPU::pop() {
   // TODO(rushfan): assert if sp >= 0xffff
   VLOG(3) << fmt::format("POP: val: {:02x}; SP: {:02x}", m, core.regs.x.sp);
   return m;
-}
-
-// this is missing oac
-void CPU::parity_szp8(uint8_t oval, uint8_t nval) {
-  const auto pc = (kern_popcount(nval) % 2 == 0);
-  FLAG_COND(nval & 0x80, core.flags, SF);
-  FLAG_COND(nval == 0, core.flags, ZF);
-  FLAG_COND(pc, core.flags, PF);
-}
-
-void CPU::parity_szp16(uint16_t oval, uint16_t nval) {
-  const auto pc = (kern_popcount(nval) % 2 == 0);
-  FLAG_COND(nval & 0x8000, core.flags, SF);
-  FLAG_COND(nval == 0, core.flags, ZF);
-  FLAG_COND(pc, core.flags, PF);
 }
 
 // RMM
