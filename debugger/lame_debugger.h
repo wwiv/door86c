@@ -4,8 +4,8 @@
 #include "core/net.h"
 #include "core/socket_connection.h"
 #include "cpu/x86/cpu.h"
-#include "dbg/debugger.h"
-#include "dbg/blocking_queue.h"
+#include "debugger/debugger.h"
+#include "debugger/blocking_queue.h"
 
 namespace door86::dbg {
 

@@ -2,7 +2,7 @@
 #define INCLUDED_DBG_DEBUGGER_H
 
 #include "cpu/x86/cpu.h"
-#include "dbg/blocking_queue.h"
+#include "debugger/blocking_queue.h"
 
 namespace door86::dbg {
 

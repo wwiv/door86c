@@ -1,4 +1,4 @@
-#include "dbg/lame_debugger.h"
+#include "debugger/lame_debugger.h"
 
 #include "core/net.h"
 #include "core/strings.h"
