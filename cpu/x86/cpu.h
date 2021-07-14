@@ -104,7 +104,11 @@ public:
   Decoder decoder;
   Memory memory;
   IO io;
+  // If true, we have an active debugger attached.
   std::atomic<bool> debugger_attached;
+  // If true, THE CPU should wait for a debugger to be attached
+  // before executing instructions
+  bool wait_for_debugger{false};
 
   // Helpers
 private:

@@ -11,14 +11,14 @@ namespace door86::dbg {
 
 class LameDebugger {
 public:
-  LameDebugger(Debugger* di, SOCKET sock);
+  LameDebugger(DebuggerBackend* di, SOCKET sock);
   ~LameDebugger();
 
   void Run();
   void handle_line(const std::string& line);
 
 private:
-  Debugger* di_{nullptr};
+  DebuggerBackend* backend_{nullptr};
   cpu::x86::CPU* cpu_{nullptr};
   wwiv::core::SocketConnection conn_;
 };

@@ -6,6 +6,7 @@
 #include "core/version.h"
 #include "cpu/x86/cpu.h"
 #include "debugger/debugger.h"
+#include "debugger/gdb_debugger.h"
 #include "debugger/lame_debugger.h"
 #include "dos/dos.h"
 #include "dos/exe.h"
@@ -30,20 +31,30 @@ static std::string to_seg_off(uint16_t seg, uint16_t off) {
   return fmt::format("{:04x}:{:04x}", seg, off);
 }
 
-static void HandleDebuggerConnection(door86::dbg::Debugger* di, SOCKET sock) {
+static void HandleGdbDebuggerConnection(door86::dbg::DebuggerBackend* di, SOCKET sock) {
+  door86::dbg::GdbDebugger ld(di, sock);
+  ld.Run();
+}
+
+static void HandleLameDebuggerConnection(door86::dbg::DebuggerBackend* di, SOCKET sock) {
   door86::dbg::LameDebugger ld(di, sock);
   ld.Run();
 }
 
 std::atomic<bool> need_to_exit;
 
-static void StartDebugger(door86::dbg::Debugger* debugger) {
-  auto debugger_fn = [&](accepted_socket_t r) {
-    std::thread client(HandleDebuggerConnection, debugger, r.client_socket);
+static void StartDebugger(door86::dbg::DebuggerBackend* debugger) {
+  auto gdb_debugger_fn = [&](accepted_socket_t r) {
+    std::thread client(HandleGdbDebuggerConnection, debugger, r.client_socket);
+    client.detach();
+  };
+  auto lame_debugger_fn = [&](accepted_socket_t r) {
+    std::thread client(HandleLameDebuggerConnection, debugger, r.client_socket);
     client.detach();
   };
   SocketSet sockets(10);
-  sockets.add(2112, debugger_fn, "LAME_DEBUGGER");
+  sockets.add(2112, gdb_debugger_fn, "GDB Debugger");
+  sockets.add(2113, lame_debugger_fn, "LAME_DEBUGGER");
   sockets.Run(need_to_exit);
 }
 
@@ -57,6 +68,8 @@ int main(int argc, char** argv) {
   cmdline.add_argument({"v", "verbose log", "0"});
   cmdline.add_argument(
       BooleanCommandLineArgument{"debugger", 'D', "Enable lame debugger.", true});
+  cmdline.add_argument(BooleanCommandLineArgument{
+      "wait_debugger", 'W', "Wait for a debugger to be attached before executing.", false});
   cmdline.set_no_args_allowed(true);
 
   if (!cmdline.Parse()) {
@@ -77,7 +90,7 @@ int main(int argc, char** argv) {
   CPU cpu;
   door86::bios::Bios bios(&cpu);
   door86::dos::Dos dos(&cpu);
-  door86::dbg::Debugger debugger(&cpu);
+  door86::dbg::DebuggerBackend debugger(&cpu);
 
   if (!dos.initialize_process(filename)) {
     LOG(ERROR) << "Failed to initialize DOS process";
@@ -89,6 +102,9 @@ int main(int argc, char** argv) {
     std::thread client(StartDebugger, &debugger);
     client.detach();
 
+    if (cmdline.barg("wait_debugger")) {
+      cpu.wait_for_debugger = true;
+    }
   }
   cpu.core.regs.x.ax = 2; // drive C
   const auto start = std::chrono::system_clock::now();

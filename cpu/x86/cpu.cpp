@@ -1306,6 +1306,12 @@ bool CPU::run(uint16_t start_cs, uint16_t start_ip) {
 }
 
 bool CPU::run() {
+  if (wait_for_debugger) {
+    LOG(INFO) << "Waiting for a debugger to be attached before executing.";
+    while (!debugger_attached.load()) {
+      wwiv::os::sleep_for(std::chrono::milliseconds(500));
+    }
+  }
   while (running_) {
     const int pos = (core.sregs.cs * 0x10) + core.ip;
     const auto inst = decoder.decode(&memory[pos]);
@@ -1369,6 +1375,7 @@ bool CPU::execute(const instruction_t& inst) {
       }
     }
   } while (!done);
+
   if (debugger_attached.load()) {
     // Use int1 as the step interrupt if we have a debugger attached for now.
     call_interrupt(0x01);

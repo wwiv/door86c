@@ -15,11 +15,12 @@
 
 namespace door86::dbg {
 
-LameDebugger::LameDebugger(Debugger* di, SOCKET sock) : di_(di), cpu_(di->cpu()), conn_(sock) {
-  di->attach();
+LameDebugger::LameDebugger(DebuggerBackend* backend, SOCKET sock)
+    : backend_(backend), cpu_(backend->cpu()), conn_(sock) {
+  backend->attach();
 }
 
-LameDebugger::~LameDebugger() { di_->detach(); }
+LameDebugger::~LameDebugger() { backend_->detach(); }
 
 void LameDebugger::Run() {
   const auto max_fd = conn_.socket();
@@ -72,10 +73,10 @@ void LameDebugger::handle_line(const std::string& line) {
   debug_command_t dc{};
   if (cmd == "step") {
     dc.cmd = debug_command_id_t::step;
-    di_->add(dc);
+    backend_->add(dc);
   } else if (cmd == "cont") {
     dc.cmd = debug_command_id_t::cont;
-    di_->add(dc);
+    backend_->add(dc);
   } else {
   }
 }

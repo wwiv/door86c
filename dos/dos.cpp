@@ -67,12 +67,12 @@ bool Dos::initialize_process(const std::filesystem::path& filename) {
 
     // skip PSP
     const auto seg = psp_seg + 0x10;
-    LOG(INFO) << fmt::format("PSP SEG:  {:04X} ", psp_seg);
+    LOG(INFO) << fmt::format("PSP SEG:  0x{:04X} ", psp_seg);
     cpu_->core.sregs.cs = exe.hdr.cs + seg;
     cpu_->core.sregs.ss = exe.hdr.ss + seg;
     cpu_->core.regs.x.sp = exe.hdr.sp;
     cpu_->core.ip = exe.hdr.ip;
-    LOG(INFO) << "CS: " << cpu_->core.sregs.cs;
+    LOG(INFO) << fmt::format("CS: 0x{:04X}", cpu_->core.sregs.cs);
     // load_image will relocate relos
   } else {
     //

@@ -6,38 +6,38 @@
 
 namespace door86::dbg {
 
-// TODO(rushfan): Should we move Debugger into LameDebugger and then can use constructor
+// TODO(rushfan): Should we move DebuggerBackend into LameDebugger and then can use constructor
 // and destructor vs. atttach and detach?
 
-Debugger::Debugger(cpu::x86::CPU* cpu) : cpu_(cpu) {
+DebuggerBackend::DebuggerBackend(cpu::x86::CPU* cpu) : cpu_(cpu) {
 }
 
-Debugger::~Debugger() { 
+DebuggerBackend::~DebuggerBackend() { 
 }
 
 
-bool Debugger::add(debug_command_t c) { 
+bool DebuggerBackend::add(debug_command_t c) { 
   cmds_.push(std::move(c)); 
   return true;
 }
 
-bool Debugger::attach() {
+bool DebuggerBackend::attach() {
   cpu_->int_handlers().try_emplace(
-      0x1, std::bind(&Debugger::int1, this, std::placeholders::_1, std::placeholders::_2));
+      0x1, std::bind(&DebuggerBackend::int1, this, std::placeholders::_1, std::placeholders::_2));
   cpu_->int_handlers().try_emplace(
-      0x3, std::bind(&Debugger::int3, this, std::placeholders::_1, std::placeholders::_2));
+      0x3, std::bind(&DebuggerBackend::int3, this, std::placeholders::_1, std::placeholders::_2));
   cpu_->debugger_attached.store(true);
   return true;
 }
 
-bool Debugger::detach() {
+bool DebuggerBackend::detach() {
   cpu_->int_handlers().erase(0x01);
   cpu_->int_handlers().erase(0x03);
   cpu_->debugger_attached.store(false);
   return true;
 }
 
-void Debugger::int1(int, door86::cpu::x86::CPU& cpu) {
+void DebuggerBackend::int1(int, door86::cpu::x86::CPU& cpu) {
   while (!cpu_->debugger_attached.load()) {
     if (cmds_.empty()) {
       wwiv::os::sleep_for(std::chrono::milliseconds(200));
@@ -52,7 +52,7 @@ void Debugger::int1(int, door86::cpu::x86::CPU& cpu) {
   }
 }
 
-void Debugger::int3(int, door86::cpu::x86::CPU& cpu) { int1(3, cpu); }
+void DebuggerBackend::int3(int, door86::cpu::x86::CPU& cpu) { int1(3, cpu); }
 
 
 }

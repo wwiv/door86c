@@ -21,11 +21,11 @@ struct debug_command_t {
   debug_command_id_t cmd;
 };
 
-// Debugger interface
-class Debugger {
+// DebuggerBackend interface
+class DebuggerBackend {
 public:
-  Debugger(cpu::x86::CPU* cpu);
-  ~Debugger();
+  DebuggerBackend(cpu::x86::CPU* cpu);
+  ~DebuggerBackend();
   bool add(debug_command_t c);
   bool attach();
   bool detach();
