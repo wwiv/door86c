@@ -752,8 +752,10 @@ void CPU::scas_m8(const instruction_t& inst) {
   const auto b = memory.get<uint8_t>(core.sregs.es, core.regs.x.di);
   auto r = r8(&core.regs.h.al);
   r.cmp(b);
-  VLOG(5) << "SCAS: left: " << static_cast<int>(r.get()) << "; right: " << static_cast<int>(b)
-          << "; ZF: " << core.flags.zflag();
+  if (VLOG_IS_ON(5)) {
+    VLOG(5) << "SCAS: left: " << static_cast<int>(r.get()) << "; right: " << static_cast<int>(b)
+            << "; ZF: " << core.flags.zflag();
+  }
   core.regs.x.di += step;
 }
 
@@ -762,8 +764,10 @@ void CPU::scas_m16(const instruction_t& inst) {
   const auto b = memory.get<uint16_t>(core.sregs.es, core.regs.x.di);
   auto r = r16(&core.regs.x.ax);
   r.cmp(b);
-  VLOG(5) << "SCAS: left: " << static_cast<int>(r.get()) << "; right: " << static_cast<int>(b)
-          << "; ZF: " << core.flags.zflag();
+  if (VLOG_IS_ON(5)) {
+    VLOG(5) << "SCAS: left: " << static_cast<int>(r.get()) << "; right: " << static_cast<int>(b)
+            << "; ZF: " << core.flags.zflag();
+  }
   core.regs.x.di += step;
 }
 
@@ -883,8 +887,10 @@ void CPU::execute_0xC(const instruction_t& inst) {
   // RET (near call and clear some bytes of stack)
   case 0x2: {
     core.ip = pop();
-    VLOG(1) << fmt::format("RET and clear stack: num: {:02x}; SP: {:02x}", inst.imm16,
-                           core.regs.x.sp);
+    if (VLOG_IS_ON(1)) {
+      VLOG(1) << fmt::format("RET and clear stack: num: {:02x}; SP: {:02x}", inst.imm16,
+                             core.regs.x.sp);
+    }
     core.regs.x.sp += inst.imm16;
   } break;
   // RET (near call)
@@ -924,16 +930,20 @@ void CPU::execute_0xC(const instruction_t& inst) {
   case 0xA: {
     core.ip = pop();
     core.sregs.cs = pop();
-    VLOG(1) << fmt::format("RETF and clear stack: num: {:02x}; SP: {:02x}", inst.disp16,
-                           core.regs.x.sp);
+    if (VLOG_IS_ON(1)) {
+      VLOG(1) << fmt::format("RETF and clear stack: num: {:02x}; SP: {:02x}", inst.disp16,
+                             core.regs.x.sp);
+    }
     core.regs.x.sp += inst.disp16;
   } break;
   // RET (far call)
   case 0xB: {
     core.ip = pop();
     core.sregs.cs = pop();
-    VLOG(1) << fmt::format("RETF and clear stack: num: {:02x}; SP: {:02x}", inst.disp16,
-                           core.regs.x.sp);
+    if (VLOG_IS_ON(1)) {
+      VLOG(1) << fmt::format("RETF and clear stack: num: {:02x}; SP: {:02x}", inst.disp16,
+                             core.regs.x.sp);
+    }
   } break;
   // "CD":"int imm8",
   case 0xC: call_interrupt(0x03); break;
@@ -943,7 +953,9 @@ void CPU::execute_0xC(const instruction_t& inst) {
     core.ip = pop();
     core.sregs.cs = pop();
     core.flags.value_ = pop();
-    VLOG(1) << fmt::format("IRET num: SP: {:02x}", core.regs.x.sp);
+    if (VLOG_IS_ON(1)) {
+      VLOG(1) << fmt::format("IRET num: SP: {:02x}", core.regs.x.sp);
+    }
   } break;
   default: LOG(WARNING) << fmt::format("Skipped OPCODE: 0x{:02x}", static_cast<int>(inst.op));
   }
@@ -1331,6 +1343,10 @@ bool CPU::run() {
 }
 
 bool CPU::execute(const instruction_t& inst) {
+  if (debugger_attached.load()) {
+    // Use int1 as the step interrupt if we have a debugger attached for now.
+    call_interrupt(0x01);
+  }
   if (inst.metadata.mask & op_mask_notimpl) {
     LOG(WARNING) << fmt::format("Unimplemented Opcode Encountered: {:02X} at IP: {:02X}",
       static_cast<uint16_t>(inst.op), core.ip - 1);
@@ -1376,10 +1392,6 @@ bool CPU::execute(const instruction_t& inst) {
     }
   } while (!done);
 
-  if (debugger_attached.load()) {
-    // Use int1 as the step interrupt if we have a debugger attached for now.
-    call_interrupt(0x01);
-  }
   return true;
 }
 
@@ -1388,7 +1400,9 @@ void CPU::push(uint16_t val) {
   // To push we decrement the stack pointer and then add it.
   core.regs.x.sp -= 2;
   // TODO(rushfan): assert if sp <= 0x0000
-  VLOG(3) << fmt::format("PUSH: val: {:02x}; SP: {:02x}", val, core.regs.x.sp);
+  if (VLOG_IS_ON(3)) {
+    VLOG(3) << fmt::format("PUSH: val: {:02x}; SP: {:02x}", val, core.regs.x.sp);
+  }
   memory.set<uint16_t>(core.sregs.ss, core.regs.x.sp, val);
 }
 
@@ -1396,7 +1410,9 @@ uint16_t CPU::pop() {
   const auto m = memory.get<uint16_t>(core.sregs.ss, core.regs.x.sp);
   core.regs.x.sp += 2; 
   // TODO(rushfan): assert if sp >= 0xffff
-  VLOG(3) << fmt::format("POP: val: {:02x}; SP: {:02x}", m, core.regs.x.sp);
+  if (VLOG_IS_ON(3)) {
+    VLOG(3) << fmt::format("POP: val: {:02x}; SP: {:02x}", m, core.regs.x.sp);
+  }
   return m;
 }
 

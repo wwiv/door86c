@@ -42,7 +42,10 @@ public:
   bool handle_multithread(const std::string& line);
   bool handle_registers(const std::string& line);
   bool handle_stop(const std::string& line);
+  bool handle_mem(const std::string& line);
   bool send_ack();
+
+  bool handle_response(debug_response_t r);
 
 private:
   DebuggerBackend* backend_{nullptr};

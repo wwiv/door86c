@@ -139,6 +139,20 @@ std::string GdbRemote::request() {
   }
 }
 
+bool GdbDebugger::handle_response(debug_response_t r) {
+  switch (r.id) {
+  case debug_response_id_t::stop: {
+    LOG(INFO) << "Handling response: stop";
+    return remote_.response(fmt::format("S{:02X}", r.thread_id));
+  } break;
+  case debug_response_id_t::terminate: {
+    LOG(INFO) << "Handling response: terminate";
+    return remote_.response(fmt::format("W{:02X}", r.exit_code));
+  } break;
+  default: LOG(INFO) << "Handling UNKNOWN response: "; return false;
+  }
+}
+
 GdbDebugger::GdbDebugger(DebuggerBackend* backend, SOCKET sock)
     : backend_(backend), cpu_(backend->cpu()), remote_(sock) {
   backend->attach();
@@ -156,7 +170,7 @@ void GdbDebugger::Run() {
     FD_ZERO(&sock_set);
     FD_SET(remote_.socket(), &sock_set);
     // Some OSes change this to be the time remaining per call, so reset it each time. ick
-    ts.tv_sec = 5;
+    ts.tv_sec = 1;
     ts.tv_usec = 0;
     auto rc = select(max_fd + 1, &sock_set, nullptr, nullptr, &ts);
     if (rc < 0) {
@@ -178,6 +192,10 @@ void GdbDebugger::Run() {
         break;
       }
       handle_line(req);
+    }
+
+    while (!backend_->responses().empty()) {
+      handle_response(backend_->responses().pop());
     }
   }
 }
@@ -208,8 +226,10 @@ bool GdbDebugger::handle_query_line(const std::string& line) {
     return remote_.response("");
   } else if (starts_with(line, "qAttached")) {
     return remote_.response("1"); // attached to existing exe
-  } else if (starts_with(line, "qfThreadInfo")) {
-    return remote_.response("m1"); // one thread active
+  } else if (starts_with(line, "qfThreadInfo")) { // qsThreadInfo
+    return remote_.response("m1");                // one thread active
+  } else if (starts_with(line, "qsThreadInfo")) {
+    return remote_.response("l");
   } else if (starts_with(line, "qC")) {
     // current thread id is always 0
     return remote_.response("QC1");
@@ -220,13 +240,33 @@ bool GdbDebugger::handle_query_line(const std::string& line) {
 }
 
 bool GdbDebugger::handle_v_line(const std::string& line) {
-  LOG(INFO) << "GdbDebugger::handle_v_line";
+  LOG(INFO) << "GdbDebugger::handle_v_line: " << line;
   if (line == "vMustReplyEmpty") {
     // vMustReplyEmpty gets an empty response
     return remote_.response("");
+  } else if (line == "vCont?") {
+    return remote_.response("vCont;c;C;r;s;S;t");
+  } else if (starts_with(line, "vCont;")) {
+    auto vrawdata = line.substr(6);
+    auto actions = SplitString(vrawdata, ";");
+    // hack:
+    char cmd = vrawdata.empty() ? 'X' : vrawdata.front();
+    if (cmd == 'S' || cmd == 's') {
+      backend_->add(debug_command_t{debug_command_id_t::step});
+      // TODO(rushfan): Find way to send stop packet later
+    } else if (cmd == 'C' || cmd == 'c') {
+      // TODO(rushfan): Find way to send stop packet later
+      backend_->add(debug_command_t{debug_command_id_t::cont});
+    }
   }
-  remote_.response("");
-  return false;
+  // need to get some way to send stop packets from int1. This is a hack
+  for (int i = 0; i < 10 && backend_->state() != debugee_state_t::stopped; i++) {
+    wwiv::os::sleep_for(std::chrono::microseconds(100));
+  }
+  if (backend_->state() == debugee_state_t::stopped) {
+    remote_.response("S05");
+  }
+  return true;
 }
 
 bool GdbDebugger::handle_multithread(const std::string& line) {
@@ -237,7 +277,7 @@ bool GdbDebugger::handle_multithread(const std::string& line) {
   }
   switch (line.at(1)) {
   case 'c':
-  case 'g': default_thread_id_ = to_number<int>(line.substr(2)); return remote_.response("");
+  case 'g': default_thread_id_ = to_number<int>(line.substr(2), 16); return remote_.response("");
   default: LOG(WARNING) << "Malformed 'H' line: " << line; return false;
   }
 }
@@ -254,6 +294,15 @@ std::string to_intel_format_hex32(uint16_t d) {
   return fmt::format("{:02X}{:02X}{:02X}{:02X}", b0, b1, b2, b3);
 }
 
+std::string to_intel_format_seg_off(uint16_t seg, uint16_t off) {
+  const uint32_t d = (seg * 0x10) + off;
+  uint8_t b0 = d & 0x000000ff;
+  uint8_t b1 = (d & 0x0000ff00) >> 8;
+  uint8_t b2 = (d & 0x00ff0000) >> 16;
+  uint8_t b3 = (d & 0xff000000) >> 24;
+  return fmt::format("{:02X}{:02X}{:02X}{:02X}", b0, b1, b2, b3);
+}
+
 bool GdbDebugger::handle_registers(const std::string& line) {
   LOG(INFO) << "GdbDebugger::handle_registers";
   switch (line.front()) {
@@ -261,21 +310,26 @@ bool GdbDebugger::handle_registers(const std::string& line) {
     auto& r = cpu_->core.regs;
     auto& sr = cpu_->core.sregs;
     std::vector<std::string> regs;
-    regs.emplace_back(fmt::format("{:02X}{:02X}0000", r.h.al, r.h.ah));
-    regs.emplace_back(fmt::format("{:02X}{:02X}0000", r.h.cl, r.h.ch));
-    regs.emplace_back(fmt::format("{:02X}{:02X}0000", r.h.dl, r.h.dh));
-    regs.emplace_back(fmt::format("{:02X}{:02X}0000", r.h.bl, r.h.bh));
-    regs.emplace_back(fmt::format("{:02X}{:02X}0000", r.x.sp & 0xFF, (r.x.sp & 0xff00) >> 8));
-    regs.emplace_back(fmt::format("{:02X}{:02X}0000", r.x.bp & 0xFF, (r.x.bp & 0xff00) >> 8));
-    regs.emplace_back(fmt::format("{:02X}{:02X}0000", r.x.si & 0xFF, (r.x.si & 0xff00) >> 8));
-    regs.emplace_back(fmt::format("{:02X}{:02X}0000", r.x.di & 0xFF, (r.x.di & 0xff00) >> 8));
-    const uint32_t ip = (sr.cs * 0x10) + cpu_->core.ip;
-    regs.emplace_back(to_intel_format_hex32(ip));
+    regs.emplace_back(to_intel_format_hex16(r.x.ax));
+    regs.emplace_back(to_intel_format_hex16(r.x.cx));
+    regs.emplace_back(to_intel_format_hex16(r.x.dx));
+    regs.emplace_back(to_intel_format_hex16(r.x.bx));
+    regs.emplace_back(to_intel_format_hex16(r.x.sp));
+    regs.emplace_back(to_intel_format_hex16(r.x.bp));
+    regs.emplace_back(to_intel_format_hex16(r.x.si));
+    regs.emplace_back(to_intel_format_hex16(r.x.di));
+    regs.emplace_back(to_intel_format_seg_off(sr.cs, cpu_->core.ip));
     regs.emplace_back(to_intel_format_hex16(cpu_->core.flags.value_));
+    regs.emplace_back(to_intel_format_seg_off(sr.cs, 0));
+    regs.emplace_back(to_intel_format_seg_off(sr.ss, 0));
+    regs.emplace_back(to_intel_format_seg_off(sr.ds, 0));
+    regs.emplace_back(to_intel_format_seg_off(sr.es, 0));
+    regs.emplace_back(to_intel_format_seg_off(sr.fs, 0));
+    regs.emplace_back(to_intel_format_seg_off(sr.gs, 0));
     return remote_.response(JoinStrings(regs, ""));
   }
   case 'p': {
-    const auto rn = to_number<int>(line.substr(1));
+    const auto rn = to_number<int>(line.substr(1), 16);
     LOG(INFO) << "Fetch register #: " << rn;
     return remote_.response("00000000");
   } break;
@@ -286,7 +340,27 @@ bool GdbDebugger::handle_registers(const std::string& line) {
 bool GdbDebugger::handle_stop(const std::string& line) {
   LOG(INFO) << "GdbDebugger::handle_stop";
   // Sorta BS response
-  return remote_.response("S01");
+  return remote_.response("S05");
+}
+
+bool GdbDebugger::handle_mem(const std::string& line) {
+  LOG(INFO) << "GdbDebugger::handle_stop";
+  const auto v = SplitString(line.substr(1), ",");
+  if (v.size() < 2) {
+    LOG(ERROR) << "Malformed m packet: " << line;
+    // BS response
+    return remote_.response("");
+  }
+  auto addr = to_number<uint32_t>(v.at(0), 16);
+  auto len = to_number<int>(v.at(1), 16);
+
+  std::string resp;
+  resp.reserve(len * 4);
+  for (int i = 0; i < len; i++) {
+    resp.append(fmt::format("{:02X}", cpu_->memory.abs8(addr + i)));
+  }
+
+  return remote_.response(resp);
 }
 
 bool GdbDebugger::handle_line(const std::string& s) {
@@ -297,6 +371,7 @@ bool GdbDebugger::handle_line(const std::string& s) {
   case 'g': return handle_registers(s);
   case 'p': return handle_registers(s);
   case '?': return handle_stop(s);
+  case 'm': return handle_mem(s);
   default: LOG(ERROR) << "Unhandled line: " << s; 
     remote_.response("");
     return false;
